@@ -1,2 +1,2 @@
-first local git file.
-���߂Ẵ��[�J��GIT�ł���`
+﻿first local git file.
+初めてのローカルGITですよ～
