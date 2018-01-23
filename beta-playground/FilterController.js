@@ -4,6 +4,8 @@
 // Copyright (c) 2018 Tsukimi
 // ----------------------------------------------------------------------------
 // Version
+// 2.0.0 2018/01/23 refactor code. change version because no comatibility with v1.x
+// *****
 // 1.0.4 2018/01/08 効果ターゲット追加、Godrayにパラメータ追加
 // 1.0.0 2018/01/03 リリース
 //=============================================================================
@@ -165,7 +167,7 @@ function Filter_Controller() {
     var _Game_Interpreter_pluginCommand      = Game_Interpreter.prototype.pluginCommand;
     Game_Interpreter.prototype.pluginCommand = function(command, args) {
         _Game_Interpreter_pluginCommand.apply(this, arguments);
-        var id;
+        var id, dur;
         switch ((command || '').toUpperCase()) {
             case 'CREATEFILTER' :
                 id = args[0];
@@ -176,7 +178,7 @@ function Filter_Controller() {
                     if(args[3] === "screen") char = 0;
                     else {
                         char = Number(args[3]); 
-                        if(char === 0) {
+                        if(char === 0) { // this event/battle unit
                             if( !$gameParty.inBattle() ) char = this._eventId || 0;
                             else {
                                 var sub = BattleManager._subject, index = 0;
@@ -200,26 +202,19 @@ function Filter_Controller() {
                 
             case 'SETFILTER' :
                 id = args[0];
-                var fc = $gameMap.getFilterController(id);
-                if(fc) {
-                    $gameMap.setFilter( id , TargetProcess(args.slice(1), fc._filterType) );
-                }
+                $gameMap.setFilter( id , ParamProcess(args.slice(1)) );
                 break;
                 
             case 'MOVEFILTER' :
                 id = args[0];
-                var fc = $gameMap.getFilterController(id);
-                if(fc) {
-                    $gameMap.moveFilter( id , TargetProcess(args.slice(1,-1), fc._filterType) , Number(args[args.length-1]) || 1 );
-                }
+                dur = Number(args[args.length-1]) || 1 ;
+                $gameMap.moveFilter(id , ParamProcess(args.slice(1,-1)), dur);
                 break;
                 
             case 'MOVEFILTERQ' :
                 id = args[0];
-                var fc = $gameMap.getFilterController(id);
-                if(fc) {
-                    $gameMap.moveFilterQueue( id , TargetProcess(args.slice(1,-1), fc._filterType) , Number(args[args.length-1]) || 1 );
-                }
+                var dur = Number(args[args.length-1]) || 1 ;
+                $gameMap.moveFilterQueue(id , ParamProcess(args.slice(1,-1)), dur);
                 break;
                 
             case 'ERASEFILTER' :
@@ -234,7 +229,7 @@ function Filter_Controller() {
                 
             case 'SETFILTERSPEED' :
                 id = args[0];
-                $gameMap.setFilterAddiTime(id, Number(args[1]) || 0.01);
+                $gameMap.setFilterAddiTime(id, Number(args[1]) || 0);
                 break;
         }
     };
@@ -247,104 +242,11 @@ function Filter_Controller() {
     
     // resultArray:[x,y,radius,strength,strength2,strength3]
     // undefined parts are unused parts
-    function TargetProcess(array, filterType) {
+    function ParamProcess(array) {
         var resultArray = [];
-        switch(filterType) {
-            case "bulgepinch":
-                resultArray[0] = getNumberOrX(array[0]);
-                resultArray[1] = getNumberOrX(array[1]);
-                resultArray[2] = getNumberOrX(array[2]);
-                resultArray[3] = getNumberOrX(array[3]);
-                break;
-
-            case "radialblur":
-                resultArray[0] = getNumberOrX(array[0]);
-                resultArray[1] = getNumberOrX(array[1]);
-                resultArray[2] = getNumberOrX(array[2]);
-                resultArray[3] = getNumberOrX(array[3]);
-                resultArray[4] = getNumberOrX(array[4]);
-                break;
-
-            case "godray":
-                resultArray[2] = getNumberOrX(array[0]);
-                resultArray[3] = getNumberOrX(array[1]);
-                resultArray[4] = getNumberOrX(array[2]);
-                resultArray[5] = getNumberOrX(array[3]);
-                break;
-
-            case "ascii":
-                resultArray[2] = getNumberOrX(array[0]);
-                break;
-
-            case "crosshatch":
-                break;
-
-            case "dot":
-                resultArray[2] = getNumberOrX(array[0]);
-                resultArray[3] = getNumberOrX(array[1]);
-                break;
-
-            case "emboss":
-                resultArray[3] = getNumberOrX(array[0]);
-                break;
-
-            case "shockwave":
-                resultArray[0] = getNumberOrX(array[0]);
-                resultArray[1] = getNumberOrX(array[1]);
-                resultArray[2] = getNumberOrX(array[2]);
-                resultArray[3] = getNumberOrX(array[3]);
-                resultArray[4] = getNumberOrX(array[4]);
-                resultArray[5] = getNumberOrX(array[5]);
-                break;
-
-            case "twist":
-                resultArray[0] = getNumberOrX(array[0]);
-                resultArray[1] = getNumberOrX(array[1]);
-                resultArray[2] = getNumberOrX(array[2]);
-                resultArray[3] = getNumberOrX(array[3]);
-                break;
-
-            case "zoomblur":
-                resultArray[0] = getNumberOrX(array[0]);
-                resultArray[1] = getNumberOrX(array[1]);
-                resultArray[2] = getNumberOrX(array[2]);
-                resultArray[3] = getNumberOrX(array[3]);
-                break;
-
-                /*
-            case "colormatrix":
-                break;
-                */
-
-            case "noise":
-                resultArray[3] = getNumberOrX(array[0]);
-                break;
-
-            case "blur":
-                resultArray[3] = getNumberOrX(array[0]);
-                break;
-
-            case "oldfilm":
-                resultArray[3] = getNumberOrX(array[0]);
-                resultArray[4] = getNumberOrX(array[1]);
-                resultArray[5] = getNumberOrX(array[2]);
-                break;
-                
-            case "rgbsplit":
-                resultArray[2] = getNumberOrX(array[0]);
-                resultArray[3] = getNumberOrX(array[1]);
-                break;
-                
-            case "bloom":
-                resultArray[2] = getNumberOrX(array[0]);
-                resultArray[3] = getNumberOrX(array[1]);
-                resultArray[4] = getNumberOrX(array[2]);
-                resultArray[5] = getNumberOrX(array[3]);
-                break;
-
-            default:
-                break;
-                                   }
+        for(var i = 0; i < array.length; i++) {
+            resultArray.push( getNumberOrX(array[i]) );
+        }
         return resultArray;
     };
     
@@ -354,61 +256,50 @@ function Filter_Controller() {
     // The Controller class for a filter.
     //=============================================================================
     
-    Filter_Controller.prototype.initialize = function(filter, id, targetObj, char, mapId) {
+    Filter_Controller.prototype.initialize = function(filterName, id, targetObj, char, mapId) {
         this.initBasic(id, targetObj, char, mapId);
-        this.initFilterParam(filter);
+        this.initFilterParam(filterName);
         this.initTarget();
     };
 
     Filter_Controller.prototype.initBasic = function(id, targetObj, char, mapId) {
         this._filterType = "";
-        this._filter = null;
-        this._x = 0;
-        this._y = 0;
-        this._radius = 0;
-        this._strength = 0;
-        this._strength2 = 0;
-        this._strength3 = 0;
         this._erase = false;
         this._eraseAfterMove = false;
         this._moveQueue = [];
+        this._time = 0;
+        this._addiTime = 0;
         this._id = id;
         this._targetObj = targetObj;
         this._character = char;
         this._charMapId = mapId;
-        this._time = 0;
-        this._addiTime = 0;
+        this.currentParams = null;
+        this.targetParams = null;
     };
 
     Filter_Controller.prototype.initTarget = function() {
-        this._targetX = this._x;
-        this._targetY = this._y;
-        this._targetRadius = this._radius;
-        this._targetStrength = this._strength;
-        this._targetStrength2 = this._strength2;
-        this._targetStrength3 = this._strength3;
+        this.targetParams = this.currentParams.slice(); // fast array copy
         this._duration = 0;
     };
     
-    var _filterNameMap = {};
-    _filterNameMap["bulgepinch"]  = PIXI.filters.BulgePinchFilter;
-    _filterNameMap["radialblur"]  = PIXI.filters.RadialBlurFilter;
-    _filterNameMap["godray"]      = PIXI.filters.GodrayFilter;
-    _filterNameMap["ascii"]       = PIXI.filters.AsciiFilter;
-    _filterNameMap["crosshatch"]  = PIXI.filters.CrossHatchFilter;
-    _filterNameMap["dot"]         = PIXI.filters.DotFilter;
-    _filterNameMap["emboss"]      = PIXI.filters.EmbossFilter;
-    _filterNameMap["shockwave"]   = PIXI.filters.ShockwaveFilter;
-    _filterNameMap["twist"]       = PIXI.filters.TwistFilter;
-    _filterNameMap["zoomblur"]    = PIXI.filters.ZoomBlurFilter;
-    _filterNameMap["noise"]       = PIXI.filters.NoiseFilter;
-    _filterNameMap["blur"]        = PIXI.filters.KawaseBlurFilter; // -> KawaseBlur fast!
-    _filterNameMap["oldfilm"]     = PIXI.filters.OldFilmFilter;
-    _filterNameMap["rgbsplit"]    = PIXI.filters.RGBSplitFilter;
-    _filterNameMap["motionblur"]  = PIXI.filters.MotionBlurFilter;
-    _filterNameMap["bloom"]       = PIXI.filters.AdvancedBloomFilter;
+    var _FNMap = {};
+    _FNMap["bulgepinch"]  = PIXI.filters.BulgePinchFilter;
+    _FNMap["radialblur"]  = PIXI.filters.RadialBlurFilter;
+    _FNMap["godray"]      = PIXI.filters.GodrayFilter;
+    _FNMap["ascii"]       = PIXI.filters.AsciiFilter;
+    _FNMap["crosshatch"]  = PIXI.filters.CrossHatchFilter;
+    _FNMap["dot"]         = PIXI.filters.DotFilter;
+    _FNMap["emboss"]      = PIXI.filters.EmbossFilter;
+    _FNMap["shockwave"]   = PIXI.filters.ShockwaveFilter;
+    _FNMap["twist"]       = PIXI.filters.TwistFilter;
+    _FNMap["zoomblur"]    = PIXI.filters.ZoomBlurFilter;
+    _FNMap["noise"]       = PIXI.filters.NoiseFilter;
+    _FNMap["blur"]        = PIXI.filters.KawaseBlurFilter; // -> KawaseBlur: fast!
+    _FNMap["oldfilm"]     = PIXI.filters.OldFilmFilter;
+    _FNMap["rgbsplit"]    = PIXI.filters.RGBSplitFilter;
+    _FNMap["bloom"]       = PIXI.filters.AdvancedBloomFilter;
     
-    Filter_Controller.filterNameMap = _filterNameMap;
+    Filter_Controller.filterNameMap = _FNMap;
     
     Filter_Controller.prototype.createFilter = function() {
         var filter;
@@ -425,111 +316,77 @@ function Filter_Controller() {
         return filter;
     };
 
-    Filter_Controller.prototype.initFilterParam = function(filter) {
-        this._filterType = filter.toLowerCase();
+    var _defaultParam = {};
+    _defaultParam["bulgepinch"] = [0,0,0,1];
+    _defaultParam["radialblur"] = [0,0,0,0,9];
+    _defaultParam["godray"] = [30,0.5,2.5,1.0];
+    _defaultParam["ascii"] = [8];
+    _defaultParam["crosshatch"] = [];
+    _defaultParam["dot"] = [5,1];
+    _defaultParam["emboss"] = [5];
+    _defaultParam["shockwave"] = [0,0,-1,30,160,1];
+    _defaultParam["twist"] = [0,0,0,4];
+    _defaultParam["zoomblur"] = [0,0,0,0.1];
+    _defaultParam["noise"] = [0.5];
+    _defaultParam["blur"] = [8];
+    _defaultParam["oldfilm"] = [0.5,0.15,0.3];
+    _defaultParam["rgbsplit"] = [0,0];
+    _defaultParam["bloom"] = [0,1,0.5,1];
+    
+    Filter_Controller.defaultFilterParam = _defaultParam;
+    
+    Filter_Controller.prototype.initFilterParam = function(filterName) {
+        this._filterType = filterName.toLowerCase();
+        var defaultParam = Filter_Controller.defaultFilterParam[this._filterType];
+        if( !defaultParam ) {
+            this._filterType = "";
+            this._erase = true;
+            return;
+        }
+        this.currentParams = defaultParam.slice(); // fast array copy
         switch(this._filterType) {
-            case "bulgepinch":
-                this._x        = 0;
-                this._y        = 0;
-                this._radius   = 0;
-                this._strength = 1;
-                break;
-
-            case "radialblur":
-                this._x        = 0;
-                this._y        = 0;
-                this._radius   = 0;
-                this._strength = 0;
-                this._strength2 = 9;
-                break;
-
             case "godray":
-                this._radius   = 30;
-                this._strength = 0.5;
-                this._strength2 = 2.5;
-                this._strength3 = 1.0;
                 this._addiTime = 0.01;
-                break;
-
-            case "ascii":
-                this._strength = 8;
-                break;
-
-            case "crosshatch":
-                break;
-
-            case "dot":
-                this._radius   = 5;
-                this._strength = 1;
-                break;
-
-            case "emboss":
-                this._strength = 5;
                 break;
 
             case "shockwave":
-                this._x        = 0;
-                this._y        = 0;
-                this._radius   = -1;
-                this._strength = 30;
-                this._strength2 = 160;
-                this._strength3 = 1;
                 this._addiTime = 0.01;
                 break;
 
-            case "twist":
-                this._x        = 0;
-                this._y        = 0;
-                this._radius   = 0;
-                this._strength = 4;
-                break;
-
-            case "zoomblur":
-                this._x        = 0;
-                this._y        = 0;
-                this._radius   = 0;
-                this._strength = 0.1;
-                break;
-
-            case "noise":
-                this._strength = 0.5;
-                break;
-
-            case "blur":
-                this._strength = 8;
-                break;
-
             case "oldfilm":
-                this._strength = 0.5;
-                this._strength2 = 0.15;
-                this._strength3 = 0.3;
                 this._addiTime = 1;
                 break;
 
-            case "rgbsplit":
-                this._radius = 0;
-                this._strength = 0;
-                break;
-
-            case "motionblur":
-                break;
-
-            case "bloom":
-                this._radius = 8;
-                this._strength = 1;
-                this._strength2 = 0.5;
-                this._strength3 = 1;
-                break;
-
-            default:
-                this._filterType = "";
-                this._erase = true;
+            case "noise":
+                this._addiTime = 1;
                 break;
                                    }
     };
 
     Filter_Controller.prototype.update = function() {
         this.updateMove();
+        this.checkErase();
+    };
+
+    Filter_Controller.prototype.updateMove = function() {
+        if(this._duration <= 0) {
+            if(this._moveQueue.length > 0) {
+                var targetData = this._moveQueue.shift();
+                this.move(targetData[0], targetData[1]);
+            }
+            else if(this._eraseAfterMove) this.erase();
+        }
+        if (this._duration > 0) {
+            var d = this._duration, cp = this.currentParams, tp = this.targetParams;
+            for(var i = 0; i < cp.length; i++) {
+                cp[i] = (cp[i] * (d - 1) + tp[i]) / d;
+            }
+            this._duration--;
+        }
+        this._time += this._addiTime;
+    };
+
+    Filter_Controller.prototype.checkErase = function() {
         if(typeof(this._character) === "number") {
             if( !!this._charMapId && !this.isOnCurrentMap() ) {
                 this.erase();
@@ -539,160 +396,159 @@ function Filter_Controller() {
             }
         }
     };
-
-    Filter_Controller.prototype.updateMove = function() {
-        if(this._duration === 0) {
-            if(this._moveQueue.length > 0) {
-                var targetData = this._moveQueue.shift();
-                this.move(targetData[0], targetData[1]);
-            }
-            else if(this._eraseAfterMove) this._erase = true;
-        }
-        if (this._duration > 0) {
-            var d = this._duration;
-            this._x = (this._x * (d - 1) + this._targetX) / d;
-            this._y = (this._y * (d - 1) + this._targetY) / d;
-            this._radius  = (this._radius  * (d - 1) + this._targetRadius)  / d;
-            this._strength  = (this._strength  * (d - 1) + this._targetStrength)  / d;
-            this._strength2  = (this._strength2  * (d - 1) + this._targetStrength2)  / d;
-            this._strength3  = (this._strength3  * (d - 1) + this._targetStrength3)  / d;
-            this._duration--;
-        }
-        this._time += this._addiTime;
+    
+    //=============================================================================
+    //  updateFilter_Handler
+    //  function handler of updating actual filter object
+    //=============================================================================
+    
+    var _updateFilterHandler = {};
+    
+    var bp = function(filter, cp) {
+        var loc = this.getCharLoc();
+        filter.center = [ (loc[0] + cp[0]) / Graphics.width , (loc[1] + cp[1]) / Graphics.height];
+        filter.radius   = cp[2];
+        filter.strength = cp[3];
     };
+    _updateFilterHandler["bulgepinch"] = bp;
+    
+    var rb = function(filter, cp) {
+        var loc = this.getCharLoc();
+        filter.center = [ (loc[0] + cp[0]), (loc[1] + cp[1]) ];
+        filter.radius   = cp[2];
+        filter.angle = cp[3];
+        filter.kernelSize   = Math.round(cp[4]);
+    };
+    _updateFilterHandler["radialblur"] = rb;
+    
+    var gr = function(filter, cp) {
+        filter.angle = cp[0];
+        filter.gain = cp[1];
+        filter.lacunarity = cp[2];
+        filter.strength = cp[3];
+        filter.time = this._time;
+    };
+    _updateFilterHandler["godray"] = gr;
+    
+    var as = function(filter, cp) {
+        filter.size = cp[0];
+    };
+    _updateFilterHandler["ascii"] = as;
+    
+    var cs = function(filter, cp) {
+    };
+    _updateFilterHandler["crosshatch"] = cs;
+    
+    var dot = function(filter, cp) {
+        filter.angle = cp[0];
+        filter.scale = cp[1];
+    };
+    _updateFilterHandler["dot"] = dot;
+    
+    var em = function(filter, cp) {
+        filter.strength = cp[0];
+    };
+    _updateFilterHandler["emboss"] = em;
+    
+    var sw = function(filter, cp) {
+        var loc = this.getCharLoc();
+        filter.center = [ (loc[0] + cp[0]), (loc[1] + cp[1]) ];
+        filter.radius = cp[2];
+        filter.amplitude = cp[3];
+        filter.wavelength = cp[4];
+        filter.brightness = cp[5];
+        filter.time = this._time;
+        if(this._time > 10) this.erase(); // 必要ある？
+    };
+    _updateFilterHandler["shockwave"] = sw;
+    
+    var tw = function(filter, cp) {
+        var loc = this.getCharLoc();
+        filter.offset = [ (loc[0] + cp[0]), (loc[1] + cp[1]) ];
+        filter.radius = cp[2];
+        filter.angle = cp[3];
+    };
+    _updateFilterHandler["twist"] = tw;
+    
+    var zb = function(filter, cp) {
+        var loc = this.getCharLoc();
+        filter.center = [ (loc[0] + cp[0]), (loc[1] + cp[1]) ];
+        filter.innerRadius = cp[2];
+        filter.strength = cp[3];
+    };
+    _updateFilterHandler["zoomblur"] = zb;
+    
+    var no = function(filter, cp) {
+        filter.noise = cp[0];
+        if(this._time > 1) {
+            filter.seed = Math.random()*3;
+            this._time = 0;
+        }
+    };
+    _updateFilterHandler["noise"] = no;
+    
+    var blr = function(filter, cp) {
+        filter.blur = cp[0];
+    };
+    _updateFilterHandler["blur"] = blr;
+    
+    var of = function(filter, cp) {
+        filter.sepia = cp[0];
+        filter.noise = cp[1];
+        filter.scratchDensity = cp[2];
+        if(this._time > 1) {
+            filter.seed = Math.random();
+            this._time = 0;
+        }
+    };
+    _updateFilterHandler["oldfilm"] = of;
+    
+    var rgb = function(filter, cp) {
+        var r = cp[0], sita = cp[1];
+        filter.red = [r*Math.sin(Math.PI/180*sita), r*Math.cos(Math.PI/180*sita)];
+        sita += 120;
+        filter.green = [r*Math.sin(Math.PI/180*sita), r*Math.cos(Math.PI/180*sita)];
+        sita += 120;
+        filter.blue = [r*Math.sin(Math.PI/180*sita), r*Math.cos(Math.PI/180*sita)];
+    };
+    _updateFilterHandler["rgbsplit"] = rgb;
 
-    Filter_Controller.prototype.updateFilterParam = function(filter) {
-        switch(this._filterType.toLowerCase()) {
-            case "bulgepinch":
-                var dx = this.getCharX(), dy = this.getCharY();
-                filter.center = [ (dx + this._x) / Graphics.width , (dy + this._y) / Graphics.height];
-                filter.radius   = this._radius;
-                filter.strength = this._strength;
-                break;
+    
+    var blm = function(filter, cp) {
+        filter.blur = cp[0]
+        filter.bloomScale = cp[1];
+        filter.threshold = cp[2];
+        filter.brightness = cp[3];
+    };
+    _updateFilterHandler["bloom"] = blm;
+    
+    Filter_Controller.updateFilterHandler = _updateFilterHandler;
+    //=============================================================================
+    //  updateFilter_Handler
+    //  END!!
+    //=============================================================================
 
-            case "radialblur":
-                var dx = this.getCharX(), dy = this.getCharY();
-                filter.center = [ (dx + this._x), (dy + this._y) ];
-                filter.radius   = this._radius;
-                filter.angle = this._strength;
-                filter.kernelSize   = Math.round(this._strength2);
-                break;
-
-            case "godray":
-                filter.angle = this._radius;
-                filter.gain = this._strength;
-                filter.lacunarity = this._strength2;
-                filter.strength = this._strength3;
-                filter.time = this._time;
-                break;
-
-            case "ascii":
-                filter.size = this._strength;
-                break;
-
-            case "crosshatch":
-                break;
-
-            case "dot":
-                filter.angle = this._radius;
-                filter.scale = this._strength;
-                break;
-
-            case "emboss":
-                filter.strength = this._strength;
-                break;
-
-            case "shockwave":
-                var dx = this.getCharX(), dy = this.getCharY();
-                filter.center = [ (dx + this._x), (dy + this._y) ];
-                filter.radius = this._radius;
-                filter.amplitude = this._strength;
-                filter.wavelength = this._strength2;
-                filter.brightness = this._strength3;
-                filter.time = this._time;
-                if(this._time > 10) this.erase(); // 必要ある？
-                break;
-
-            case "twist":
-                var dx = this.getCharX(), dy = this.getCharY();
-                filter.offset = [ (dx + this._x), (dy + this._y) ];
-                filter.radius   = this._radius;
-                filter.angle = this._strength;
-                break;
-
-            case "zoomblur":
-                var dx = this.getCharX(), dy = this.getCharY();
-                filter.center = [ (dx + this._x), (dy + this._y) ];
-                filter.innerRadius   = this._radius;
-                filter.strength = this._strength;
-                break;
-            case "noise":
-                filter.noise = this._strength;
-                filter.seed = Math.random()*3;
-                break;
-
-            case "blur":
-                filter.blur = this._strength;
-                break;
-
-            case "oldfilm":
-                filter.sepia = this._strength;
-                filter.noise = this._strength2;
-                filter.scratchDensity = this._strength3;
-                if(this._time > 1) {
-                    filter.seed = Math.random();
-                    this._time = 0;
-                }
-                break;
-
-            case "rgbsplit":
-                var r = this._radius, sita = this._strength;
-                filter.red = [r*Math.sin(Math.PI/180*sita), r*Math.cos(Math.PI/180*sita)];
-                sita += 120;
-                filter.green = [r*Math.sin(Math.PI/180*sita), r*Math.cos(Math.PI/180*sita)];
-                sita += 120;
-                filter.blue = [r*Math.sin(Math.PI/180*sita), r*Math.cos(Math.PI/180*sita)];
-                break;
-                
-            case "motionblur":
-                var point = filter.velocity, d = $gamePlayer._stopCount===0?$gamePlayer._direction:0;
-                
-                point.x = (point.x + ((d===4)? -2:((d===6)? 2: Math.sign(point.x)*(-2)))).clamp(-50,50);
-                point.y = (point.y + ((d===2)? 2:((d===8)? -2: Math.sign(point.y)*(-2)))).clamp(-50,50);;
-                filter.velocity = point;
-                break;
-
-            case "bloom":
-                filter.blur = this._radius;
-                filter.bloomScale = this._strength;
-                filter.threshold = this._strength2;
-                filter.brightness = this._strength3;
-                break;
-
-                                   }
+    Filter_Controller.prototype.updateFilter = function(filter) {
+        var handler = Filter_Controller.updateFilterHandler[this._filterType];
+        if( !handler ) return;
+        handler.apply(this, [filter, this.currentParams]);
     };
     
     Filter_Controller.prototype.set = function(target) {
         this.clearMoveQueue();
-        var x = target[0], y = target[1], r = target[2], s = target[3], s2 = target[4], s3 = target[5];
-        this._x = typeof(x) === "number" ? x:this._x;
-        this._y = typeof(y) === "number" ? y:this._y;
-        this._radius = typeof(r) === "number" ? r:this._radius;
-        this._strength = typeof(s) === "number" ? s:this._strength;
-        this._strength2 = typeof(s2) === "number" ? s2:this._strength2;
-        this._strength3 = typeof(s3) === "number" ? s3:this._strength3;
+        var cp = this.currentParams;
+        for(var i = 0; i < cp.length; i++) {
+            cp[i] = typeof(target[i]) === "number" ? target[i]:cp[i];
+        }
         this.initTarget();
     };
 
     Filter_Controller.prototype.move = function(target, duration) {
         this.initTarget();
-        var x = target[0], y = target[1], r = target[2], s = target[3], s2 = target[4], s3 = target[5];
-        this._targetX = typeof(x) === "number" ? x:this._targetX;
-        this._targetY = typeof(y) === "number" ? y:this._targetY;
-        this._targetRadius = typeof(r) === "number" ? r:this._targetRadius;
-        this._targetStrength = typeof(s) === "number" ? s:this._targetStrength;
-        this._targetStrength2 = typeof(s2) === "number" ? s2:this._targetStrength2;
-        this._targetStrength3 = typeof(s3) === "number" ? s3:this._targetStrength3;
+        var tp = this.targetParams;
+        for(var i = 0; i < tp.length; i++) {
+            tp[i] = typeof(target[i]) === "number" ? target[i]:tp[i];
+        }
         this._duration = duration;
     };
 
@@ -725,47 +581,26 @@ function Filter_Controller() {
     };
 
     Filter_Controller.prototype.setAddiTime = function(time) {
-        this._addiTime = time || 0.01;
+        this._addiTime = time || 0;
     };
     
-    Filter_Controller.prototype.getCharX = function() {
-        if(!this._character) return 0; // no specified character
-        if(!!this._charMapId) { // search event screen X
-            if(this._character < 0) return $gamePlayer.screenX();
+    Filter_Controller.prototype.getCharLoc = function() {
+        if(!this._character) return [0,0]; // no specified character
+        if(!!this._charMapId) { // search event screen Loc
+            if(this._character < 0) return [$gamePlayer.screenX(), $gamePlayer.screenY()];
             else {
                 char = $gameMap.event(this._character);
-                if(char) return char.screenX();
-                return 0;
+                if(char) return [char.screenX(), char.screenY()];
             }
         }
         else { // search Battler screen X
-            if(!$gameParty.inBattle()) return 0;
+            if(!$gameParty.inBattle()) return [0,0];
             var char;
             if(this._character < 0) char = BattleManager._spriteset._enemySprites[-this._character-1];
             else char = BattleManager._spriteset._actorSprites[this._character-1];
-            if(char) return char.x;
-            return 0;
+            if(char) return [char.x, char.y];
         }
-    };
-    
-    Filter_Controller.prototype.getCharY = function() {
-        if(!this._character) return 0; // no specified character
-        if(!!this._charMapId) { // search event screen Y
-            if(this._character < 0) return $gamePlayer.screenY();
-            else {
-                char = $gameMap.event(this._character);
-                if(char) return char.screenY();
-                return 0;
-            }
-        }
-        else { // search Battler screen Y
-            if(!$gameParty.inBattle()) return 0;
-            var char;
-            if(this._character < 0) char = BattleManager._spriteset._enemySprites[-this._character-1];
-            else char = BattleManager._spriteset._actorSprites[this._character-1];
-            if(char) return char.y;
-            return 0;
-        }
+        return [0,0];
     };
 
     //=============================================================================
@@ -784,11 +619,10 @@ function Filter_Controller() {
     Game_Map.prototype.createFilter = function(id, filter, targetObj, char) {
         var lastFilter = this._filterConArr.get(id);
         if(lastFilter) {
-            SceneManager._scene.removeFilterCon(lastFilter);
+            SceneManager._scene.removeFilterOf(lastFilter);
         }
         targetObj = targetObj || 0;
         var f = new Filter_Controller( filter, id, targetObj, char, (typeof(char) === "number" && !$gameParty.inBattle() ? this.mapId():undefined) );
-        f.set([0,0]);
         this._filterConArr.set(id, f);
     };
 
@@ -925,10 +759,7 @@ function Filter_Controller() {
         for(var i = 0; i < fSetArray.length; i++) {
             var f = fSetArray[i].split(',');
             var id = f[0];
-            var fc = this.getFilterController(id);
-            if(fc) {
-                this.setFilter( id , TargetProcess(f.slice(1), fc._filterType) );
-            }
+                this.setFilter( id , ParamProcess(f.slice(1)) );
         }
         fSetArray = $dataMap.metaArray.SetFilterSpeed; 
         if(!fSetArray) return;
@@ -969,10 +800,7 @@ function Filter_Controller() {
         for(var i = 0; i < fSetArray.length; i++) {
             var f = fSetArray[i].split(',');
             var id = f[0];
-            var fc = $gameMap.getFilterController(id);
-            if(fc) {
-                $gameMap.setFilter( id , TargetProcess(f.slice(1), fc._filterType) );
-            }
+            $gameMap.setFilter( id , ParamProcess(f.slice(1)) );
         }
         fSetArray = this.event().metaArray.SetFilterSpeed; 
         if(!fSetArray) return;
@@ -1026,47 +854,15 @@ function Filter_Controller() {
     };
     
     Scene_Base.prototype.applyTKMFilter = function(filter, targetObj) {
-        var arr, targets = [];
-        switch(targetObj) {
-            case 0:
-                targets = [this._spriteset];
-                break;
-
-            case 1:
-                targets = [this];
-                break;
-                
-            case 2:
-                if(!!this._spriteset) targets = [this._spriteset._tilemap];
-                break;
-                
-            case 3:
-                if(!!this._spriteset) {
-                    if(!!this._spriteset._tilemap) {
-                        targets = [this._spriteset._tilemap.lowerZLayer, this._spriteset._tilemap.upperZLayer];
-                    }
-                }
-                break;
-                
-            case 4:
-                if(!!this._spriteset) {
-                    targets = this._spriteset._characterSprites; // special
-                }
-                break;
-                
-            case 5:
-                if(!!this._spriteset) {
-                    targets = [this._spriteset._pictureContainer];
-                }
-                break;
-                         }
+        var arr, targets = this.getTKMFilterObj(targetObj);
         for(var i = 0; i < targets.length; i++) {
             var target = targets[i];
             if(!target) continue;
             arr = target.filters || [];
             arr.push(filter);
             target.filters = arr;
-            if(!target.filterArea) {
+            
+            if([2,3,4].indexOf(targetObj) !== -1 && !target.filterArea) {
                 var margin = 48;
                 var width = Graphics.width + margin * 2;
                 var height = Graphics.height + margin * 2;
@@ -1076,7 +872,19 @@ function Filter_Controller() {
     };
 
     Scene_Base.prototype.removeTKMFilter = function(filter, targetObj) {
-        var arr, targets = [];
+        var arr, targets = this.getTKMFilterObj(targetObj);
+        for(var i = 0; i < targets.length; i++) {
+            var target = targets[i];
+            if(!target) continue;
+            arr = target.filters || [];
+            var index = arr.indexOf(filter);
+            if(index >= 0) arr.splice(index, 1);
+            target.filters = arr;
+        }
+    };
+
+    Scene_Base.prototype.getTKMFilterObj = function(targetObj) {
+        var targets = [];
         switch(targetObj) {
             case 0:
                 targets = [this._spriteset];
@@ -1110,20 +918,13 @@ function Filter_Controller() {
                 }
                 break;
                          }
-        for(var i = 0; i < targets.length; i++) {
-            var target = targets[i];
-            if(!target) continue;
-            arr = target.filters || [];
-            var index = arr.indexOf(filter);
-            if(index >= 0) arr.splice(index, 1);
-            target.filters = arr;
-        }
+        return targets;
     };
     
-    Scene_Base.prototype.removeFilterCon = function(FC) {
-        if(this._TKMFilters.has(FC)) {
-            this.removeTKMFilter(this._TKMFilters.get(FC), FC._targetObj);
-            this._TKMFilters.delete(FC);
+    Scene_Base.prototype.removeFilterOf = function(FC) {
+        if(this._TKMFilters.has(FC._id)) {
+            this.removeTKMFilter(this._TKMFilters.get(FC._id), FC._targetObj);
+            this._TKMFilters.delete(FC._id);
         }
     };
     
@@ -1135,26 +936,22 @@ function Filter_Controller() {
     
     Scene_Map.prototype.updateTKMfilters = function() {
         $gameMap._filterConArr.forEach(function(FC, key, map) {
-            var filter;
+            var filter = this._TKMFilters.get(FC._id);
             if(FC._erase) {
-                filter = this._TKMFilters.get(FC);
                 if(filter) {
                     // remove Filter from target
                     this.removeTKMFilter(filter, FC._targetObj);
-                    this._TKMFilters.delete(FC);
+                    this._TKMFilters.delete(FC._id);
                 }
                 map.delete(key);
                 return;
             }
-            else if(!this._TKMFilters.has(FC)) {
+            if(!filter) {
                 filter = FC.createFilter();
-                this._TKMFilters.set(FC, filter);
+                this._TKMFilters.set(FC._id, filter);
                 this.applyTKMFilter(filter, FC._targetObj);
             }
-            else{
-                filter = this._TKMFilters.get(FC);
-            }
-            FC.updateFilterParam(filter);
+            FC.updateFilter(filter);
         }, this);
     };
     
@@ -1167,9 +964,8 @@ function Filter_Controller() {
     Scene_Battle.prototype.updateTKMfilters = function() {
         $gameMap._filterConArr.forEach(function(FC, key, map) {
             if(FC.isMapEventOnly()) return;
-            var filter;
+            var filter = this._TKMFilters.get(FC._id);
             if(FC._erase) {
-                filter = this._TKMFilters.get(FC);
                 if(filter) {
                     // remove Filter from target
                     this.removeTKMFilter(filter, FC._targetObj);
@@ -1177,15 +973,12 @@ function Filter_Controller() {
                 map.delete(key);
                 return;
             }
-            else if(!this._TKMFilters.has(FC)) {
+            if(!filter) {
                 filter = FC.createFilter();
-                this._TKMFilters.set(FC, filter);
+                this._TKMFilters.set(FC._id, filter);
                 this.applyTKMFilter(filter, FC._targetObj);
             }
-            else{
-                filter = this._TKMFilters.get(FC);
-            }
-            FC.updateFilterParam(filter);
+            FC.updateFilter(filter);
         }, this);
     };
     
