@@ -4,6 +4,7 @@
 // Copyright (c) 2018 Tsukimi
 // ----------------------------------------------------------------------------
 // Version
+// 2.0.1 2018/01/23 fix metaArray bug
 // 2.0.0 2018/01/23 refactor code. change version because no comatibility with v1.x
 // *****
 // 1.0.4 2018/01/08 効果ターゲット追加、Godrayにパラメータ追加
@@ -891,6 +892,7 @@ function Filter_Controller() {
     };
 
     Game_Map.prototype.setupTKMFilters = function() {
+        if ($dataMap.metaArray === undefined) return;
         var fArray = $dataMap.metaArray.Filter;
         if(!fArray) return;
         for(var i = 0; i < fArray.length; i++) {
@@ -932,6 +934,7 @@ function Filter_Controller() {
     };
 
     Game_Event.prototype.setupTKMFilters = function() {
+        if (this.event().metaArray === undefined) return;
         var fArray = this.event().metaArray.Filter;
         if(!fArray) return;
         for(var i = 0; i < fArray.length; i++) {
