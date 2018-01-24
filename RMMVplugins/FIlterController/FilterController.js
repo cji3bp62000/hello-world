@@ -33,8 +33,16 @@
  * 3. Event Tags(->event dependent filter)
  * 
  * 
+ * *** Filter Parameter List:
+ * ---------------------------
+ * https://github.com/cji3bp62000/hello-world/blob/master/RMMVplugins/FIlterController/filter-list.jpg
+ * please download the above image
+ * to check name and parameters of each filter.
+ * 
+ * 
  * *** Plugin Command:
  * ---------------------------
+ * 
  * 　createFilter <id> <filterType> <filter-target> (<character>)
  * 　　create filter.
  * 
@@ -114,6 +122,7 @@
  * 
  * *** Map Tags/Event Tags:
  * ---------------------------
+ * 
  * 　<Filter:[id],[filterType],[filter-target]>
  * 　　Basically same as createfilter.
  * 　　Creating filter when entering map.
@@ -139,8 +148,6 @@
  * 　　example:
  * 　　　<Filter:GODRAY#1,godray,0>
  * 　　　<SetFilterSpeed:GODRAY#1,0.03>
- * 
- * 
  * 
  */
 
@@ -238,12 +245,20 @@
  * 
  * ***************************************************
  * 各エフェクトのパラメータ：
- * https://i.imgur.com/0lXrKIo.png
+ * https://github.com/cji3bp62000/hello-world/blob/master/RMMVplugins/FIlterController/filter-list(jp).jpg
  * 
  * 例えば,setFilter でbulgePinch のパラメータを調整したい時は、
  * createFilter 1 bulgePinch 0
- * setFilter 1 408 312 96 1
- *  x->408, y->312, 半径->96, 強度->1 になるように設定する。
+ * setFilter 1号 408 312 96 1
+ * 　x->408, y->312, 半径->96, 強度->1 になるように設定する。
+ * 
+ * 数字の他、以下で文字でも設定可能。
+ * 　x: 現在のパラメータ（パラメータを変えない）
+ * 　v<数字>: 変数番号<数字>の値を代入する
+ * 　r<#1>~<#2>: #1~#2の間の乱数生成。
+ * 　            #1と#2もv<数字>で指定可能。
+ * 　例:
+ * 　　setFilter 1号 v1 v2 r50~v3 x
  * 
  * ***************************************************
  * 
