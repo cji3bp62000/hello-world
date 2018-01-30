@@ -134,6 +134,8 @@
  *    set the animation speed.
  * 　　　default value: godray, shockwave : 0.01
  * 　　　               oldfilm, noise    : 1
+ * 　　　               crt               : 0.25
+ * 　　　               reflection        : 0.1
  * 
  * 
  * 
@@ -267,6 +269,8 @@
  *     のことを指す。
  *     デフォルト: godray, shockwave : 0.01
  *     　　　　　  oldfilm           : 1
+ *     　　　　　  crt               : 0.25
+ *     　　　　　  reflection        : 0.1
  * 
  *    例: createFilter 陽射し godray 0
  *    　  setFilterSpeed 陽射し 0.03
