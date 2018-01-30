@@ -4,6 +4,10 @@
 // Copyright (c) 2018 Tsukimi
 // ----------------------------------------------------------------------------
 // Version
+// 2.0.5 2018/01/30 ※add new target Object(target->specified char/pic only)
+//                  ※add six new filter Controller
+//                  ※fix godray-filter iOS bug(temporarily. wait for pixi official update)
+//                  ->see here: https://github.com/pixijs/pixi-filters/pull/140
 // 2.0.1 2018/01/23 fix metaArray bug
 // 2.0.0 2018/01/23 refactor code. change version because no comatibility with v1.x
 // *****
@@ -14,6 +18,12 @@
 /*:
  * @plugindesc FilterController
  * @author Tsukimi
+ * 
+ * 
+ * @param Use Decimal in Variables
+ * @desc allow decimal when using game variables or not.
+ * precision to 3 decimal digits.(0.001)  value: true/false
+ * @default true
  * 
  * @help
  * *** pixi-filter Controller
@@ -55,18 +65,24 @@
  *      2: map(tiles+characters)
  *      3: tiles
  *      4: all characers
+ *      4000+id: character#id (id-> -1:game Player, 
+ *                             0:this event, 1~: event#id)
  *      5: all pictures
+ *      5000+id: picture#id (id-> picture#id)
+ * 
  *    character: optional parameter. Make filter Location 
  *               depend on character, and will erase itself
  *               when leaving current map.
  *      ~-1: game Player (inBattle: enemy id)
  *        0: this event  (inBattle: current actor)
- *       0~: event ID    (inBattle: party member id)
+ *       1~: event ID    (inBattle: party member id)
  *       screen: screen.(mostly used for restricting to current map)
  * 
  * 　　example:
  * 　　　createFilter tw#1 twist 0
  * 　　　createFilter GLOW godray 2 screen
+ * 　　　createFilter tw2 twist 3999     (effect only apply to game Player)
+ * 　　　createFilter tw2 twist 5001     (effect only apply to pic#1)
  * 
  * 
  * 　eraseFilter <id>
@@ -156,6 +172,11 @@
  * @plugindesc FilterController
  * @author Tsukimi
  * 
+ * @param 変数に小数点が使えるようにする
+ * @desc trueにすると、変数に小数点が使えるようになる
+ * 小数点四位以下四捨五入。 入力値：true/false
+ * @default true
+ * 
  * @help
  * 
  * 画面エフェクトの詰め合わせ
@@ -178,9 +199,16 @@
  *    画面エフェクトを作る。
  *    - id: エフェクトに付ける識別名。 数字でなくてもいい。
  *    - エフェクト名: エフェクトの種類。
- *    - 効果ターゲット: 0:画面、 1:全画面(メッセージウィンドウ含む)
- *      2: マップ（全キャラ+地形タイル）、3: 地形タイル、 4：全キャラ、
- *      5：全ピクチャ
+ *    - 効果ターゲット: 0: 画面
+ *                   1: 全画面(メッセージウィンドウ含む)
+ *                   2: マップ（全キャラ+地形タイル）
+ *                   3: 地形タイル
+ *                   4: 全キャラ
+ *                   4000+x: 特定キャラ(x-> -1: 自キャラ, 
+ *                           0: このイベント, 1以上: 該当イベント)
+ *                   5: 全ピクチャ
+ *                   5000+x: 特定ピクチャ (x-> ピクチャ番号)
+ *      、、 、
  * 
  *    - (キャラID): 指定した場合はエフェクトを該当キャラに付けて、
  *                 マップ/バトル から離れるとエフェクトは消える。
@@ -307,7 +335,40 @@ function Filter_Controller() {
  
 (function() {
     "use strict";
+    
+    //=============================================================================
+    //  Plugin parameter
+    //  
+    //=============================================================================
+    var pluginName = 'FilterController';
+    var getParamString = function(paramNames) {
+        if (!Array.isArray(paramNames)) paramNames = [paramNames];
+        for (var i = 0; i < paramNames.length; i++) {
+            var name = PluginManager.parameters(pluginName)[paramNames[i]];
+            if (name) return name;
+        }
+        return null;
+    };
+    var getParamBoolean = function(paramNames) {
+        var value = getParamString(paramNames);
+        return (value || '').toUpperCase() === 'TRUE';
+    };
 
+    if(getParamBoolean(['Use Decimal in Variables', '変数に小数点が使えるようにする'])) {
+        
+        var _Game_Variables_setValue = Game_Variables.prototype.setValue;
+        Game_Variables.prototype.setValue = function(variableId, value) {
+            if (variableId > 0 && variableId < $dataSystem.variables.length) {
+                if (typeof value === 'number') {
+                    value = Math.round(value * 1000 + 0.0000001) / 1000;
+                    this._data[variableId] = value;
+                    this.onChange();
+                }
+                else _Game_Variables_setValue.apply(this, arguments);
+            }
+        };
+    }
+    
     //=============================================================================
     // Game_Interpreter
     //  プラグインコマンド[P_DRAG]などを追加定義します。
@@ -322,6 +383,7 @@ function Filter_Controller() {
                 id = args[0];
                 var filterType = args[1];
                 var filterTarget = parseInt(args[2]) || 0;
+                if(filterTarget === 4000) filterTarget += this._eventId;
                 var char;
                 if(args.length > 3) {
                     if(args[3] === "screen") char = 0;
@@ -444,7 +506,9 @@ function Filter_Controller() {
         this.targetParams = this.currentParams.slice(); // fast array copy
         this._duration = 0;
     };
-    
+    //=============================================================================
+    // Filter_Special_Initialization
+    //=============================================================================
     var _FSInit = {};
     _FSInit["oldfilm"]    = function(filter) {
         filter.vignetting = 0;
@@ -452,7 +516,29 @@ function Filter_Controller() {
         filter.vignettingBlur = 0;
         filter.scratch = 0.7;
     };
+    
+    _FSInit["godray-np"]  = function(filter) {
+        filter.parallel = false;
+    };
+    
+    _FSInit["crt"]    = function(filter) {
+        filter.vignetting = 0;
+        filter.vignettingAlpha = 0;
+        filter.vignettingBlur = 0;
+    };
+
+    _FSInit["reflection-m"] = function(filter) {
+        filter.mirror = true;
+    };
+
+    _FSInit["reflection-w"] = function(filter) {
+        filter.mirror = false;
+    };
+    
     Filter_Controller.filterSpecialInit = _FSInit;
+    //=============================================================================
+    // Filter_Special_Initialization_End
+    //=============================================================================
     
     Filter_Controller.prototype.createFilter = function() {
         var filter;
@@ -468,21 +554,27 @@ function Filter_Controller() {
     };
 
     var _defaultParam = {};
-    _defaultParam["bulgepinch"] = [0,0,0,1];
-    _defaultParam["radialblur"] = [0,0,0,0,9];
-    _defaultParam["godray"] = [30,0.5,2.5,1.0];
-    _defaultParam["ascii"] = [8];
-    _defaultParam["crosshatch"] = [];
-    _defaultParam["dot"] = [5,1];
-    _defaultParam["emboss"] = [5];
-    _defaultParam["shockwave"] = [0,0,-1,30,160,1];
-    _defaultParam["twist"] = [0,0,0,4];
-    _defaultParam["zoomblur"] = [0,0,0,0.1];
-    _defaultParam["noise"] = [0.5];
-    _defaultParam["blur"] = [8];
-    _defaultParam["oldfilm"] = [0.5,0.15,0.3];
-    _defaultParam["rgbsplit"] = [0,0];
-    _defaultParam["bloom"] = [8,1,0.5,1];
+    _defaultParam["bulgepinch"]     = [0,0,0,1];
+    _defaultParam["radialblur"]     = [0,0,0,0,9];
+    _defaultParam["godray"]         = [30,0.5,2.5,1.0];
+    _defaultParam["ascii"]          = [8];
+    _defaultParam["crosshatch"]     = [];
+    _defaultParam["dot"]            = [5,1];
+    _defaultParam["emboss"]         = [5];
+    _defaultParam["shockwave"]      = [0,0,-1,30,160,1];
+    _defaultParam["twist"]          = [0,0,0,4];
+    _defaultParam["zoomblur"]       = [0,0,0,0.1];
+    _defaultParam["noise"]          = [0.5];
+    _defaultParam["blur"]           = [8];
+    _defaultParam["oldfilm"]        = [0.5,0.15,0.3];
+    _defaultParam["rgbsplit"]       = [0,0];
+    _defaultParam["bloom"]          = [8,1,0.5,1];
+    _defaultParam["godray-np"]      = [0,0,0.5,2.5,1.0];
+    _defaultParam["adjustment"]     = [1,1,1,1,1,1,1,1];
+    _defaultParam["pixelate"]       = [1,1];
+    _defaultParam["crt"]            = [1,3,0.3,0.2,1];
+    _defaultParam["reflection-m"]   = [0.5, 0,20, 30,100, 1,1];
+    _defaultParam["reflection-w"]   = [0.5, 0,20, 30,100, 1,1];
     
     Filter_Controller.defaultFilterParam = _defaultParam;
     
@@ -498,6 +590,7 @@ function Filter_Controller() {
         this.currentParams = defaultParam.slice(); // fast array copy
         switch(this._filterType) {
             case "godray":
+            case "godray-np":
                 this._addiTime = 0.01;
                 break;
 
@@ -511,6 +604,15 @@ function Filter_Controller() {
 
             case "noise":
                 this._addiTime = 1;
+                break;
+
+            case "crt":
+                this._addiTime = 0.25;
+                break;
+
+            case "reflection-m":
+            case "reflection-w":
+                this._addiTime = 0.1;
                 break;
                                    }
     };
@@ -673,6 +775,57 @@ function Filter_Controller() {
         filter.brightness = cp[3];
     };
     _updateFilterHandler["bloom"] = blm;
+    
+    var godnp = function(filter, cp) {
+        var loc = this.getCharLoc();
+        filter.center = [ (loc[0] + cp[0]), (loc[1] + cp[1]) ];
+        filter.gain = cp[2];
+        filter.lacunarity = cp[3];
+        filter.strength = cp[4];
+        filter.time = this._time;
+    };
+    _updateFilterHandler["godray-np"] = godnp;
+    
+     var adj = function(filter, cp) {
+        filter.gamma = cp[0];
+        filter.saturation = cp[1];
+        filter.contrast = cp[2];
+        filter.brightness = cp[3];
+        filter.red = cp[4];
+        filter.green = cp[5];
+        filter.blue = cp[6];
+        filter.alpha = cp[7];
+    };
+    _updateFilterHandler["adjustment"] = adj;
+    
+    var pixel = function(filter, cp) {
+        filter.size = [cp[0], cp[1]];
+    };
+    _updateFilterHandler["pixelate"] = pixel;
+    
+    var crt = function(filter, cp) {
+        filter.curvature = cp[0];
+        filter.lineWidth = cp[1];
+        filter.lineContrast = cp[2];
+        filter.noise = cp[3];
+        filter.noiseSize = cp[4];
+
+        filter.seed = Math.random()*3;
+        filter.time = this._time;
+    };
+    _updateFilterHandler["crt"] = crt;
+    
+    var ref = function(filter, cp) {
+        var loc = this.getCharLoc();
+        filter.boundary = cp[0] + loc[1] / Graphics.height;
+        filter.amplitude = [cp[1], cp[2]];
+        filter.waveLength = [cp[3], cp[4]];
+        filter.alpha = [cp[5], cp[6]];
+
+        filter.time = this._time;
+    };
+    _updateFilterHandler["reflection-m"] = ref;
+    _updateFilterHandler["reflection-w"] = ref;
     
     Filter_Controller.updateFilterHandler = _updateFilterHandler;
     //=============================================================================
@@ -942,10 +1095,11 @@ function Filter_Controller() {
             var id = f[0];
             var filterType = f[1];
             var targetObj = parseInt(f[2]) || 0;
+            if(targetObj === 4000) targetObj += this._eventId;
             var char = this._eventId;
             $gameMap.createFilter(id, filterType, targetObj, char);
         }
-        var fSetArray = this.event().metaArray.SetFilter; 
+        var fSetArray = this.event().metaArray.SetFilter;
         if(!fSetArray) return;
         for(var i = 0; i < fSetArray.length; i++) {
             var f = fSetArray[i].split(',');
@@ -1012,8 +1166,9 @@ function Filter_Controller() {
             arr.push(filter);
             target.filters = arr;
             
-            if([2,3,4].indexOf(targetObj) !== -1 && !target.filterArea) {
-                var margin = 48;
+             // tilemap use special rendering; needs manual area setting
+            if(targetObj === 2 || targetObj === 3) {
+                var margin = 0;
                 var width = Graphics.width + margin * 2;
                 var height = Graphics.height + margin * 2;
                 target.filterArea = new Rectangle(-margin, -margin, width, height);
@@ -1035,6 +1190,26 @@ function Filter_Controller() {
 
     Scene_Base.prototype.getTKMFilterObj = function(targetObj) {
         var targets = [];
+        if(targetObj >= 3990 && targetObj <= 4999) {
+            if(!this._spriteset) return targets;
+            if(!this._spriteset._characterSprites) return targets;
+            var charSprites = this._spriteset._characterSprites;
+            var index = targetObj-4000;
+            if(index < 0) {
+                if(charSprites[charSprites.length+index]) targets.push(charSprites[charSprites.length+index]);
+            }
+            else if(index > 0) {
+                if(charSprites[index]) targets.push(charSprites[index]);
+            }
+        }
+        else if(targetObj > 5000 && targetObj <= 5999) {
+            if(!this._spriteset) return targets;
+            if(!this._spriteset._pictureContainer) return targets;
+            var picContainer = this._spriteset._pictureContainer.children;
+            var picId = $gameScreen.realPictureId(targetObj-5000);
+            if(picContainer[picId]) targets.push(picContainer[picId]);
+        }
+        else {
         switch(targetObj) {
             case 0:
                 targets = [this._spriteset];
@@ -1068,6 +1243,7 @@ function Filter_Controller() {
                 }
                 break;
                          }
+            }
         return targets;
     };
     
@@ -1154,25 +1330,31 @@ var __filters=function(e,t){"use strict";var n="attribute vec2 aVertexPosition;\
  * @pixi/filter-godray is licensed under the MIT License.
  * http://www.opensource.org/licenses/mit-license
  */
-!function(n,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports,require("pixi.js")):"function"==typeof define&&define.amd?define(["exports","pixi.js"],e):e(n.__filters={},n.PIXI)}(this,function(n,e){"use strict";var t="attribute vec2 aVertexPosition;\nattribute vec2 aTextureCoord;\n\nuniform mat3 projectionMatrix;\n\nvarying vec2 vTextureCoord;\n\nvoid main(void)\n{\n    gl_Position = vec4((projectionMatrix * vec3(aVertexPosition, 1.0)).xy, 0.0, 1.0);\n    vTextureCoord = aTextureCoord;\n}",i="vec3 mod289(vec3 x)\n{\n    return x - floor(x * (1.0 / 289.0)) * 289.0;\n}\nvec4 mod289(vec4 x)\n{\n    return x - floor(x * (1.0 / 289.0)) * 289.0;\n}\nvec4 permute(vec4 x)\n{\n    return mod289(((x * 34.0) + 1.0) * x);\n}\nvec4 taylorInvSqrt(vec4 r)\n{\n    return 1.79284291400159 - 0.85373472095314 * r;\n}\nvec3 fade(vec3 t)\n{\n    return t * t * t * (t * (t * 6.0 - 15.0) + 10.0);\n}\n// Classic Perlin noise, periodic variant\nfloat pnoise(vec3 P, vec3 rep)\n{\n    vec3 Pi0 = mod(floor(P), rep); // Integer part, modulo period\n    vec3 Pi1 = mod(Pi0 + vec3(1.0), rep); // Integer part + 1, mod period\n    Pi0 = mod289(Pi0);\n    Pi1 = mod289(Pi1);\n    vec3 Pf0 = fract(P); // Fractional part for interpolation\n    vec3 Pf1 = Pf0 - vec3(1.0); // Fractional part - 1.0\n    vec4 ix = vec4(Pi0.x, Pi1.x, Pi0.x, Pi1.x);\n    vec4 iy = vec4(Pi0.yy, Pi1.yy);\n    vec4 iz0 = Pi0.zzzz;\n    vec4 iz1 = Pi1.zzzz;\n    vec4 ixy = permute(permute(ix) + iy);\n    vec4 ixy0 = permute(ixy + iz0);\n    vec4 ixy1 = permute(ixy + iz1);\n    vec4 gx0 = ixy0 * (1.0 / 7.0);\n    vec4 gy0 = fract(floor(gx0) * (1.0 / 7.0)) - 0.5;\n    gx0 = fract(gx0);\n    vec4 gz0 = vec4(0.5) - abs(gx0) - abs(gy0);\n    vec4 sz0 = step(gz0, vec4(0.0));\n    gx0 -= sz0 * (step(0.0, gx0) - 0.5);\n    gy0 -= sz0 * (step(0.0, gy0) - 0.5);\n    vec4 gx1 = ixy1 * (1.0 / 7.0);\n    vec4 gy1 = fract(floor(gx1) * (1.0 / 7.0)) - 0.5;\n    gx1 = fract(gx1);\n    vec4 gz1 = vec4(0.5) - abs(gx1) - abs(gy1);\n    vec4 sz1 = step(gz1, vec4(0.0));\n    gx1 -= sz1 * (step(0.0, gx1) - 0.5);\n    gy1 -= sz1 * (step(0.0, gy1) - 0.5);\n    vec3 g000 = vec3(gx0.x, gy0.x, gz0.x);\n    vec3 g100 = vec3(gx0.y, gy0.y, gz0.y);\n    vec3 g010 = vec3(gx0.z, gy0.z, gz0.z);\n    vec3 g110 = vec3(gx0.w, gy0.w, gz0.w);\n    vec3 g001 = vec3(gx1.x, gy1.x, gz1.x);\n    vec3 g101 = vec3(gx1.y, gy1.y, gz1.y);\n    vec3 g011 = vec3(gx1.z, gy1.z, gz1.z);\n    vec3 g111 = vec3(gx1.w, gy1.w, gz1.w);\n    vec4 norm0 = taylorInvSqrt(vec4(dot(g000, g000), dot(g010, g010), dot(g100, g100), dot(g110, g110)));\n    g000 *= norm0.x;\n    g010 *= norm0.y;\n    g100 *= norm0.z;\n    g110 *= norm0.w;\n    vec4 norm1 = taylorInvSqrt(vec4(dot(g001, g001), dot(g011, g011), dot(g101, g101), dot(g111, g111)));\n    g001 *= norm1.x;\n    g011 *= norm1.y;\n    g101 *= norm1.z;\n    g111 *= norm1.w;\n    float n000 = dot(g000, Pf0);\n    float n100 = dot(g100, vec3(Pf1.x, Pf0.yz));\n    float n010 = dot(g010, vec3(Pf0.x, Pf1.y, Pf0.z));\n    float n110 = dot(g110, vec3(Pf1.xy, Pf0.z));\n    float n001 = dot(g001, vec3(Pf0.xy, Pf1.z));\n    float n101 = dot(g101, vec3(Pf1.x, Pf0.y, Pf1.z));\n    float n011 = dot(g011, vec3(Pf0.x, Pf1.yz));\n    float n111 = dot(g111, Pf1);\n    vec3 fade_xyz = fade(Pf0);\n    vec4 n_z = mix(vec4(n000, n100, n010, n110), vec4(n001, n101, n011, n111), fade_xyz.z);\n    vec2 n_yz = mix(n_z.xy, n_z.zw, fade_xyz.y);\n    float n_xyz = mix(n_yz.x, n_yz.y, fade_xyz.x);\n    return 2.2 * n_xyz;\n}\nfloat turb(vec3 P, vec3 rep, float lacunarity, float gain)\n{\n    float sum = 0.0;\n    float sc = 1.0;\n    float totalgain = 1.0;\n    for (float i = 0.0; i < 5.0; i++)\n    {\n        sum += totalgain * pnoise(P * sc, rep);\n        sc *= lacunarity;\n        totalgain *= gain;\n    }\n    return abs(sum);\n}\n",o="varying vec2 vTextureCoord;\nuniform sampler2D uSampler;\nuniform vec4 filterArea;\nuniform vec2 dimensions;\n\nuniform vec2 light;\nuniform bool parallel;\nuniform float aspect;\n\nuniform float gain;\nuniform float lacunarity;\nuniform float strength;\nuniform float time;\n\n${perlin}\n\nvoid main(void) {\n    gl_FragColor = texture2D(uSampler, vTextureCoord);\n    vec2 coord = vTextureCoord * filterArea.xy / dimensions.xy;\n\n    float d;\n\n    if (parallel) {\n        float _cos = light.x;\n        float _sin = light.y;\n        d = (_cos * coord.x) + (_sin * coord.y * aspect);\n    } else {\n        float dx = coord.x - light.x / dimensions.x;\n        float dy = (coord.y - light.y / dimensions.y) * aspect;\n        float dis = sqrt(dx * dx + dy * dy) + 0.00001;\n        d = dy / dis;\n    }\n\n    vec3 dir = vec3(d, d, 0.0);\n\n    float noise = turb(dir + vec3(time, 0.0, 62.1 + time) * 0.05, vec3(480.0, 320.0, 480.0), lacunarity, gain);\n    noise = mix(noise, 0.0, 0.3);\n    //fade vertically.\n    vec4 mist = vec4(noise, noise, noise, 1.0) * (1.0 - coord.y);\n    mist.a = 1.0;\n    gl_FragColor += mist * strength;\n}\n",r=function(n){function r(r){n.call(this,t,o.replace("${perlin}",i)),"number"==typeof r&&(console.warn("GodrayFilter now uses options instead of (angle, gain, lacunarity, time)"),r={angle:r},void 0!==arguments[1]&&(r.gain=arguments[1]),void 0!==arguments[2]&&(r.lacunarity=arguments[2]),void 0!==arguments[3]&&(r.time=arguments[3]),void 0!==arguments[4]&&(r.strength=arguments[3])),r=Object.assign({angle:30,gain:.5,lacunarity:2.5,strength:1.0,time:0,parallel:!0,center:[0,0]},r),this._angleLight=new e.Point,this.angle=r.angle,this.gain=r.gain,this.lacunarity=r.lacunarity,this.parallel=r.parallel,this.center=r.center,this.time=r.time}n&&(r.__proto__=n),r.prototype=Object.create(n&&n.prototype),r.prototype.constructor=r;var a={angle:{configurable:!0},gain:{configurable:!0},lacunarity:{configurable:!0},strength:{configurable:!0}};return r.prototype.apply=function(n,e,t,i){var o=e.sourceFrame,r=o.width,a=o.height;this.uniforms.light=this.parallel?this._angleLight:this.center,this.uniforms.parallel=this.parallel,this.uniforms.dimensions[0]=r,this.uniforms.dimensions[1]=a,this.uniforms.aspect=a/r,this.uniforms.time=this.time,n.applyFilter(this,e,t,i)},a.angle.get=function(){return this._angle},a.angle.set=function(n){this._angle=n;var t=n*e.DEG_TO_RAD;this._angleLight.x=Math.cos(t),this._angleLight.y=Math.sin(t)},a.gain.get=function(){return this.uniforms.gain},a.gain.set=function(n){this.uniforms.gain=n},a.lacunarity.get=function(){return this.uniforms.lacunarity},a.lacunarity.set=function(n){this.uniforms.lacunarity=n},a.strength.get=function(){return this.uniforms.strength},a.strength.set=function(n){this.uniforms.strength=n},Object.defineProperties(r.prototype,a),r}(e.Filter);n.GodrayFilter=r,Object.defineProperty(n,"__esModule",{value:!0})}),Object.assign(PIXI.filters,this.__filters);
+!function(n,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports,require("pixi.js")):"function"==typeof define&&define.amd?define(["exports","pixi.js"],e):e(n.__filters={},n.PIXI)}(this,function(n,e){"use strict";var t="attribute vec2 aVertexPosition;\nattribute vec2 aTextureCoord;\n\nuniform mat3 projectionMatrix;\n\nvarying vec2 vTextureCoord;\n\nvoid main(void)\n{\n    gl_Position = vec4((projectionMatrix * vec3(aVertexPosition, 1.0)).xy, 0.0, 1.0);\n    vTextureCoord = aTextureCoord;\n}",i="vec3 mod289(vec3 x)\n{\n    return x - floor(x * (1.0 / 289.0)) * 289.0;\n}\nvec4 mod289(vec4 x)\n{\n    return x - floor(x * (1.0 / 289.0)) * 289.0;\n}\nvec4 permute(vec4 x)\n{\n    return mod289(((x * 34.0) + 1.0) * x);\n}\nvec4 taylorInvSqrt(vec4 r)\n{\n    return 1.79284291400159 - 0.85373472095314 * r;\n}\nvec3 fade(vec3 t)\n{\n    return t * t * t * (t * (t * 6.0 - 15.0) + 10.0);\n}\n// Classic Perlin noise, periodic variant\nfloat pnoise(vec3 P, vec3 rep)\n{\n    vec3 Pi0 = mod(floor(P), rep); // Integer part, modulo period\n    vec3 Pi1 = mod(Pi0 + vec3(1.0), rep); // Integer part + 1, mod period\n    Pi0 = mod289(Pi0);\n    Pi1 = mod289(Pi1);\n    vec3 Pf0 = fract(P); // Fractional part for interpolation\n    vec3 Pf1 = Pf0 - vec3(1.0); // Fractional part - 1.0\n    vec4 ix = vec4(Pi0.x, Pi1.x, Pi0.x, Pi1.x);\n    vec4 iy = vec4(Pi0.yy, Pi1.yy);\n    vec4 iz0 = Pi0.zzzz;\n    vec4 iz1 = Pi1.zzzz;\n    vec4 ixy = permute(permute(ix) + iy);\n    vec4 ixy0 = permute(ixy + iz0);\n    vec4 ixy1 = permute(ixy + iz1);\n    vec4 gx0 = ixy0 * (1.0 / 7.0);\n    vec4 gy0 = fract(floor(gx0) * (1.0 / 7.0)) - 0.5;\n    gx0 = fract(gx0);\n    vec4 gz0 = vec4(0.5) - abs(gx0) - abs(gy0);\n    vec4 sz0 = step(gz0, vec4(0.0));\n    gx0 -= sz0 * (step(0.0, gx0) - 0.5);\n    gy0 -= sz0 * (step(0.0, gy0) - 0.5);\n    vec4 gx1 = ixy1 * (1.0 / 7.0);\n    vec4 gy1 = fract(floor(gx1) * (1.0 / 7.0)) - 0.5;\n    gx1 = fract(gx1);\n    vec4 gz1 = vec4(0.5) - abs(gx1) - abs(gy1);\n    vec4 sz1 = step(gz1, vec4(0.0));\n    gx1 -= sz1 * (step(0.0, gx1) - 0.5);\n    gy1 -= sz1 * (step(0.0, gy1) - 0.5);\n    vec3 g000 = vec3(gx0.x, gy0.x, gz0.x);\n    vec3 g100 = vec3(gx0.y, gy0.y, gz0.y);\n    vec3 g010 = vec3(gx0.z, gy0.z, gz0.z);\n    vec3 g110 = vec3(gx0.w, gy0.w, gz0.w);\n    vec3 g001 = vec3(gx1.x, gy1.x, gz1.x);\n    vec3 g101 = vec3(gx1.y, gy1.y, gz1.y);\n    vec3 g011 = vec3(gx1.z, gy1.z, gz1.z);\n    vec3 g111 = vec3(gx1.w, gy1.w, gz1.w);\n    vec4 norm0 = taylorInvSqrt(vec4(dot(g000, g000), dot(g010, g010), dot(g100, g100), dot(g110, g110)));\n    g000 *= norm0.x;\n    g010 *= norm0.y;\n    g100 *= norm0.z;\n    g110 *= norm0.w;\n    vec4 norm1 = taylorInvSqrt(vec4(dot(g001, g001), dot(g011, g011), dot(g101, g101), dot(g111, g111)));\n    g001 *= norm1.x;\n    g011 *= norm1.y;\n    g101 *= norm1.z;\n    g111 *= norm1.w;\n    float n000 = dot(g000, Pf0);\n    float n100 = dot(g100, vec3(Pf1.x, Pf0.yz));\n    float n010 = dot(g010, vec3(Pf0.x, Pf1.y, Pf0.z));\n    float n110 = dot(g110, vec3(Pf1.xy, Pf0.z));\n    float n001 = dot(g001, vec3(Pf0.xy, Pf1.z));\n    float n101 = dot(g101, vec3(Pf1.x, Pf0.y, Pf1.z));\n    float n011 = dot(g011, vec3(Pf0.x, Pf1.yz));\n    float n111 = dot(g111, Pf1);\n    vec3 fade_xyz = fade(Pf0);\n    vec4 n_z = mix(vec4(n000, n100, n010, n110), vec4(n001, n101, n011, n111), fade_xyz.z);\n    vec2 n_yz = mix(n_z.xy, n_z.zw, fade_xyz.y);\n    float n_xyz = mix(n_yz.x, n_yz.y, fade_xyz.x);\n    return 2.2 * n_xyz;\n}\nfloat turb(vec3 P, vec3 rep, float lacunarity, float gain)\n{\n    float sum = 0.0;\n    float sc = 1.0;\n    float totalgain = 1.0;\n    for (float i = 0.0; i < 5.0; i++)\n    {\n        sum += totalgain * pnoise(P * sc, rep);\n        sc *= lacunarity;\n        totalgain *= gain;\n    }\n    return abs(sum);\n}\n",o="varying vec2 vTextureCoord;\nuniform sampler2D uSampler;\nuniform vec4 filterArea;\nuniform vec2 dimensions;\n\nuniform vec2 light;\nuniform bool parallel;\nuniform float aspect;\n\nuniform float gain;\nuniform float lacunarity;\nuniform float strength;\nuniform float time;\n\n${perlin}\n\nvoid main(void) {\n    vec2 coord = vTextureCoord * filterArea.xy / dimensions.xy;\n\n    float d;\n\n    if (parallel) {\n        float _cos = light.x;\n        float _sin = light.y;\n        d = (_cos * coord.x) + (_sin * coord.y * aspect);\n    } else {\n        float dx = coord.x - light.x / dimensions.x;\n        float dy = (coord.y - light.y / dimensions.y) * aspect;\n        float dis = sqrt(dx * dx + dy * dy) + 0.00001;\n        d = dy / dis;\n    }\n\n    vec3 dir = vec3(d, d, 0.0);\n\n    float noise = turb(dir + vec3(time, 0.0, 62.1 + time) * 0.05, vec3(480.0, 320.0, 480.0), lacunarity, gain);\n    noise = mix(noise, 0.0, 0.3);\n    //fade vertically.\n    vec4 mist = vec4(noise, noise, noise, 1.0) * (1.0 - coord.y);\n    mist.a = 1.0;\n    \n    gl_FragColor = texture2D(uSampler, vTextureCoord) + mist * strength;\n}\n",r=function(n){function r(r){n.call(this,t,o.replace("${perlin}",i)),"number"==typeof r&&(console.warn("GodrayFilter now uses options instead of (angle, gain, lacunarity, time)"),r={angle:r},void 0!==arguments[1]&&(r.gain=arguments[1]),void 0!==arguments[2]&&(r.lacunarity=arguments[2]),void 0!==arguments[3]&&(r.time=arguments[3]),void 0!==arguments[4]&&(r.strength=arguments[3])),r=Object.assign({angle:30,gain:.5,lacunarity:2.5,strength:1.0,time:0,parallel:!0,center:[0,0]},r),this._angleLight=new e.Point,this.angle=r.angle,this.gain=r.gain,this.lacunarity=r.lacunarity,this.parallel=r.parallel,this.center=r.center,this.time=r.time}n&&(r.__proto__=n),r.prototype=Object.create(n&&n.prototype),r.prototype.constructor=r;var a={angle:{configurable:!0},gain:{configurable:!0},lacunarity:{configurable:!0},strength:{configurable:!0}};return r.prototype.apply=function(n,e,t,i){var o=e.sourceFrame,r=o.width,a=o.height;this.uniforms.light=this.parallel?this._angleLight:this.center,this.uniforms.parallel=this.parallel,this.uniforms.dimensions[0]=r,this.uniforms.dimensions[1]=a,this.uniforms.aspect=a/r,this.uniforms.time=this.time,n.applyFilter(this,e,t,i)},a.angle.get=function(){return this._angle},a.angle.set=function(n){this._angle=n;var t=n*e.DEG_TO_RAD;this._angleLight.x=Math.cos(t),this._angleLight.y=Math.sin(t)},a.gain.get=function(){return this.uniforms.gain},a.gain.set=function(n){this.uniforms.gain=n},a.lacunarity.get=function(){return this.uniforms.lacunarity},a.lacunarity.set=function(n){this.uniforms.lacunarity=n},a.strength.get=function(){return this.uniforms.strength},a.strength.set=function(n){this.uniforms.strength=n},Object.defineProperties(r.prototype,a),r}(e.Filter);n.GodrayFilter=r,Object.defineProperty(n,"__esModule",{value:!0})}),Object.assign(PIXI.filters,this.__filters);
 //# sourceMappingURL=filter-godray.js.map
 
 
 var _FNMap = {};
-_FNMap["bulgepinch"]  = PIXI.filters.BulgePinchFilter;
-_FNMap["radialblur"]  = PIXI.filters.RadialBlurFilter;
-_FNMap["godray"]      = PIXI.filters.GodrayFilter;
-_FNMap["ascii"]       = PIXI.filters.AsciiFilter;
-_FNMap["crosshatch"]  = PIXI.filters.CrossHatchFilter;
-_FNMap["dot"]         = PIXI.filters.DotFilter;
-_FNMap["emboss"]      = PIXI.filters.EmbossFilter;
-_FNMap["shockwave"]   = PIXI.filters.ShockwaveFilter;
-_FNMap["twist"]       = PIXI.filters.TwistFilter;
-_FNMap["zoomblur"]    = PIXI.filters.ZoomBlurFilter;
-_FNMap["noise"]       = PIXI.filters.NoiseFilter;
-_FNMap["blur"]        = PIXI.filters.KawaseBlurFilter; // -> KawaseBlur: fast!
-_FNMap["oldfilm"]     = PIXI.filters.OldFilmFilter;
-_FNMap["rgbsplit"]    = PIXI.filters.RGBSplitFilter;
-_FNMap["bloom"]       = PIXI.filters.AdvancedBloomFilter;
+_FNMap["bulgepinch"]     = PIXI.filters.BulgePinchFilter;
+_FNMap["radialblur"]     = PIXI.filters.RadialBlurFilter;
+_FNMap["godray"]         = PIXI.filters.GodrayFilter;
+_FNMap["ascii"]          = PIXI.filters.AsciiFilter;
+_FNMap["crosshatch"]     = PIXI.filters.CrossHatchFilter;
+_FNMap["dot"]            = PIXI.filters.DotFilter;
+_FNMap["emboss"]         = PIXI.filters.EmbossFilter;
+_FNMap["shockwave"]      = PIXI.filters.ShockwaveFilter;
+_FNMap["twist"]          = PIXI.filters.TwistFilter;
+_FNMap["zoomblur"]       = PIXI.filters.ZoomBlurFilter;
+_FNMap["noise"]          = PIXI.filters.NoiseFilter;
+_FNMap["blur"]           = PIXI.filters.KawaseBlurFilter; // -> KawaseBlur: fast!
+_FNMap["oldfilm"]        = PIXI.filters.OldFilmFilter;
+_FNMap["rgbsplit"]       = PIXI.filters.RGBSplitFilter;
+_FNMap["bloom"]          = PIXI.filters.AdvancedBloomFilter;
+_FNMap["godray-np"]      = PIXI.filters.GodrayFilter;
+_FNMap["adjustment"]     = PIXI.filters.AdjustmentFilter;
+_FNMap["pixelate"]       = PIXI.filters.PixelateFilter;
+_FNMap["crt"]            = PIXI.filters.CRTFilter;
+_FNMap["reflection-m"]   = PIXI.filters.ReflectionFilter;
+_FNMap["reflection-w"]   = PIXI.filters.ReflectionFilter;
     
 Filter_Controller.filterNameMap = _FNMap;
