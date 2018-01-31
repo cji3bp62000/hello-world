@@ -156,6 +156,180 @@
  * 　　Ignore the <>.
  * 
  */
+/*:ja
+ * @plugindesc トランジション効果
+ * @author Tsukimi
+ * 
+ * @param -- 画面トランジション --
+ * @desc -- 画面トランジション設定 --
+ * 
+ * @param 画面フェードに適用
+ * @desc 画面トランジションにトランジション効果を使うかどうか
+ * 入力値: true/false (使う/使わない)
+ * @default true
+ * 
+ * @param 画面フェード用画像
+ * @desc フェード用のルール画像
+ * img/ に transitions のフォルダーを作って、画像を入れてください
+ * @default 
+ * 
+ * @param 画面フェードイン用画像
+ * @desc フェードイン用のルール画像。
+ * 設定されなかったらフェード用画像を使う
+ * @default 
+ * 
+ * @param 画面フェードアウト用画像
+ * @desc フェードイン用のルール画像。
+ * 設定されなかったらフェード用画像を使う
+ * @default 
+ * 
+ * @param 画面フェードの柔らかさ
+ * @desc トランジション効果の柔らかさ。
+ * 0か、正整数を入力してください。
+ * @default 8
+ * 
+ * @param 画面フェード時間
+ * @desc フェードイン・アウトに掛かる時間。
+ * ツクールデフォルト：24(フレーム)
+ * @default 36
+ * 
+ * 
+ * @param -- メッセージウィンドウ --
+ * @desc -- メッセージウィンドウ設定 --
+ * 
+ * @param メッセージウィンドウに適用
+ * @desc メッセージウィンドウにトランジション効果を使うかどうか
+ * 入力値: true/false (使う/使わない)
+ * @default false
+ * 
+ * @param メッセージフェード用画像
+ * @desc メッセージウィンドウのフェード用のルール画像
+ * img/ に transitions のフォルダーを作って、画像を入れてください
+ * @default 
+ * 
+ * @param メッセージフェード時間
+ * @desc メッセージウィンドウのフェードイン・アウトに掛かる時間。
+ * @default 24
+ * 
+ * 
+ * @help
+ * *** グラデーションワイプ効果（トランジション）
+ * 作者: Tsukimi
+ * 
+ * ツクール2000のトランジションを再現して、画面のほか、
+ * メッセージウィンドウ、キャラ、ピクチャにも適用できる
+ * ようにするプラグインです。
+ * 
+ * *** 注意!!! ***
+ * このプラグインは、 WebGL を利用しています。
+ * ご利用のツクールMVのバージョンが1.5.0以下、かつリリース予定は
+ * ネット上/携帯アプリのゲームはこのプラグインが使えません。
+ * 予めご了承ください。
+ * 
+ * 
+ * ルール画像はプロジェクトフォルダの img/ フォルダに
+ * transitions という名前のフォルダを作り、そこに
+ * 入れてください。
+ * 
+ * このエフェクトのターゲットは３つあります:
+ * 1. 画面のフェードイン・アウト
+ * 2. キャラ・ピクチャ
+ * 3. メッセージウィンドウ
+ * 
+ * 順を追って説明します。
+ * 
+ * 
+ * *** プラグインコマンド:
+ * --------------------
+ * ※画面フェード
+ * 
+ * 　GWTransition <on/off>
+ * 　　このプラグインのトランジションを使うか設定する。
+ * 　　offにすると、ツクールデフォルトのフェードになる。
+ * 　
+ * 　例： GWTransition on
+ * 　
+ * 
+ * 　GWTrans_Setting FadeImg <imageName>
+ * 　　画面フェードに使うルール画像を設定する。
+ * 
+ * 　例： GWTrans_Setting FadeImg rule01
+ * 
+ * 
+ * 　GWTrans_Setting FadeInImg <imageName>
+ * 　　画面フェードインに使うルール画像を設定する。
+ * 
+ * 　例： GWTrans_Setting FadeInImg rule01
+ * 
+ * 　GWTrans_Setting FadeOutImg <imageName>
+ * 　　画面フェードインに使うルール画像を設定する。
+ * 
+ * 　例： GWTrans_Setting FadeOutImg rule02
+ * 
+ * 　GWTrans_Setting Duration <frames>
+ * 　　画面フェードに掛かる時間を設定する。単位：フレーム
+ * 
+ * 　例： GWTrans_Setting Duration 45
+ * 
+ * 
+ * --------------------
+ * ※キャラ・ピクチャのフェードイン・アウト
+ * 
+ * 　GWFade character <id> [fadeIn/fadeOut] <imgName> <duration> (<softness>)
+ * 　　実行するとキャラがフェードイン・アウトする。
+ * 
+ * 　　id: -1(自キャラ), 0(このイベント), 1~(イベントID)
+ * 
+ * 　　fadeIn/fadeOut：フェードインかフェードアウトか。
+ * 　　fadeOutにすると、効果が終わると自動でキャラの
+ * 　　不透明度を0にします。
+ * 
+ * 　　imgName：フェードに使うルール画像名。
+ * 
+ * 　　duration：フェード時間。
+ * 
+ * 　　softness：柔らかさ。
+ * 　　設定しないとデフォルトで0になります。
+ * 
+ * 　例:
+ * 　　GWFade character -1 fadeOut Circle 60
+ * 　　-> 自キャラは 'Circle.png' のルール画像を使って
+ * 　　フェードアウトする。(60フレーム)
+ * 
+ * 
+ * 　GWFade picture <id> [fadeIn/fadeOut] <imgName> <duration> (<softness>)
+ * 　　実行するとピクチャがフェードイン・アウトする。
+ * 　　各パラメータの意味はキャラのと同じです。
+ * 
+ * 　例:
+ * 　　GWFade picture 1 fadeIn Circle 60 5
+ * 　　-> ピクチャ1番は 'Circle.png' のルール画像を使って
+ * 　　フェードインする。(60フレーム、柔らかさ5)
+ * 
+ * 
+ * 
+ * --------------------
+ * ※メッセージウィンドウのフェードイン・アウト
+ * 
+ * 　GWMessageFade <on/off>
+ * 　　このプラグインのトランジションを使うか設定する。
+ * 　　offにすると、ツクールデフォルトの開け閉めになる。
+ * 
+ * 　例： GWMessageFade on
+ * 
+ * 
+ * 　GWMessage_Setting FadeImg <imageName>
+ * 　　メッセージウィンドウフェードに使うルール画像を設定する。
+ * 
+ * 　例： GWMessage_Setting FadeImg rule01
+ * 
+ * 
+ * 　GWMessage_Setting Duration <frames>
+ * 　　メッセージフェードに掛かる時間を設定する。単位：フレーム
+ * 
+ * 　例： GWMessage_Setting Duration 20
+ * 
+ */
 
 
 (function() {
@@ -262,12 +436,12 @@
         };
     }
     
-    SceneManager._useGWTrans    = getParamBoolean(['Use Custom Transition']);
-    SceneManager._GWImg         = getParamString(['Transition Fade Image']);
-    SceneManager._GWInImg       = getParamString(['Transition FadeIn Image']);
-    SceneManager._GWOutImg      = getParamString(['Transition FadeOut Image']);
-    SceneManager.GWSoftness     = getParamNumber(['Transition Softness']);
-    SceneManager._fadeDuration  = parseInt( getParamNumber(['Transition Duration']) );
+    SceneManager._useGWTrans    = getParamBoolean(['Use Custom Transition', '画面フェードに適用']);
+    SceneManager._GWImg         = getParamString(['Transition Fade Image', '画面フェード用画像']);
+    SceneManager._GWInImg       = getParamString(['Transition FadeIn Image', '画面フェードイン用画像']);
+    SceneManager._GWOutImg      = getParamString(['Transition FadeOut Image', '画面フェードアウト用画像']);
+    SceneManager.GWSoftness     = getParamNumber(['Transition Softness', '画面フェードの柔らかさ']);
+    SceneManager._fadeDuration  = parseInt( getParamNumber(['Transition Duration', '画面フェード時間']) );
     
     SceneManager.useGWTrans = function() {
         return $gameScreen ? $gameScreen.useGWTrans() : this._useGWTrans;
@@ -332,7 +506,6 @@
         var fArr = this.filters || [];
         var index = fArr.indexOf(this._GWFilter);
         if(index >= 0) fArr.splice(index, 1);
-        console.log(fArr);
         this.filters = fArr;
         this._GWFilter = undefined;
     };
@@ -400,11 +573,11 @@
     var _Game_Screen_initialize = Game_Screen.prototype.initialize;
     Game_Screen.prototype.initialize = function() {
         _Game_Screen_initialize.apply(this, arguments);
-        this._fadeDuration  = parseInt( getParamNumber(['Transition Duration']) );
-        this._useGWTrans    = getParamBoolean(['Use Custom Transition']);
-        this._GWImg         = getParamString(['Transition Fade Image']);
-        this._GWInImg       = getParamString(['Transition FadeIn Image']);
-        this._GWOutImg      = getParamString(['Transition FadeOut Image']);
+        this._fadeDuration  = parseInt( getParamNumber(['Transition Duration', '画面フェード時間']) );
+        this._useGWTrans    = getParamBoolean(['Use Custom Transition', '画面フェードに適用']);
+        this._GWImg         = getParamString(['Transition Fade Image', '画面フェード用画像']);
+        this._GWInImg       = getParamString(['Transition FadeIn Image', '画面フェードイン用画像']);
+        this._GWOutImg      = getParamString(['Transition FadeOut Image', '画面フェードアウト用画像']);
     };
     
     Game_Screen.prototype.useGWTrans = function() {return this._useGWTrans;};
@@ -732,9 +905,9 @@
     Game_System.prototype.initialize = function() {
         _Game_System_initialize.apply(this, arguments);
         var setting = {};
-        setting.useGW = getParamBoolean(['Use Custom Message Fade']);
-        setting.imgName = getParamString(['Message Fade Image']);
-        setting.fadeSpeed = 256 / (getParamNumber(['Message Fade Duration']) || 8);
+        setting.useGW = getParamBoolean(['Use Custom Message Fade', 'メッセージウィンドウに適用']);
+        setting.imgName = getParamString(['Message Fade Image', 'メッセージフェード用画像']);
+        setting.fadeSpeed = 256 / (getParamNumber(['Message Fade Duration', 'メッセージフェード時間']) || 8);
         this.GWMessageSetting = setting;
     };
     
