@@ -4,6 +4,7 @@
 // Copyright (c) 2018 Tsukimi
 // ----------------------------------------------------------------------------
 // Version
+// 2.0.6 2018/02/02 fix character wrong bug, make special condition(filterArea) for bulge pinch
 // 2.0.5 2018/01/30 ※add new target Object(target->specified char/pic only)
 //                  ※add six new filter Controller
 //                  ※fix godray-filter iOS bug(temporarily. wait for pixi official update)
@@ -1171,7 +1172,7 @@ function Filter_Controller() {
             target.filters = arr;
             
              // tilemap use special rendering; needs manual area setting
-            if(targetObj === 2 || targetObj === 3) {
+            if( targetObj === 2 || targetObj === 3 || (filter instanceof PIXI.filters.BulgePinchFilter) ) {
                 var margin = 0;
                 var width = Graphics.width + margin * 2;
                 var height = Graphics.height + margin * 2;
@@ -1203,7 +1204,7 @@ function Filter_Controller() {
                 if(charSprites[charSprites.length+index]) targets.push(charSprites[charSprites.length+index]);
             }
             else if(index > 0) {
-                if(charSprites[index]) targets.push(charSprites[index]);
+                if(charSprites[index-1]) targets.push(charSprites[index-1]);
             }
         }
         else if(targetObj > 5000 && targetObj <= 5999) {
