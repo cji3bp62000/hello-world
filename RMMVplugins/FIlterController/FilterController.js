@@ -539,6 +539,10 @@ function Filter_Controller() {
     _FSInit["reflection-w"] = function(filter) {
         filter.mirror = false;
     };
+
+    _FSInit["motionblur"] = function(filter) {
+        filter.kernelSize = 9;
+    };
     
     Filter_Controller.filterSpecialInit = _FSInit;
     //=============================================================================
@@ -580,6 +584,8 @@ function Filter_Controller() {
     _defaultParam["crt"]            = [1,3,0.3,0.2,1];
     _defaultParam["reflection-m"]   = [0.5, 0,20, 30,100, 1,1];
     _defaultParam["reflection-w"]   = [0.5, 0,20, 30,100, 1,1];
+    _defaultParam["motionblur"]     = [0,0];
+    _defaultParam["glow"]           = [0,4,255,255,255];
     
     Filter_Controller.defaultFilterParam = _defaultParam;
     
@@ -831,6 +837,19 @@ function Filter_Controller() {
     };
     _updateFilterHandler["reflection-m"] = ref;
     _updateFilterHandler["reflection-w"] = ref;
+    
+    var mblr = function(filter, cp) {
+        filter.velocity = [cp[0], cp[1]];
+    };
+    _updateFilterHandler["motionblur"] = mblr;
+    
+    var glow = function(filter, cp) {
+        filter.innerStrength = cp[0];
+        filter.outerStrength = cp[1];
+        // r,g,b to number(0x); ~~ is faster than floor()
+        filter.color = (~~cp[2])*65536 + (~~cp[3])*256 + (~~cp[4]);
+    };
+    _updateFilterHandler["glow"] = glow;
     
     Filter_Controller.updateFilterHandler = _updateFilterHandler;
     //=============================================================================
@@ -1361,5 +1380,7 @@ _FNMap["pixelate"]       = PIXI.filters.PixelateFilter;
 _FNMap["crt"]            = PIXI.filters.CRTFilter;
 _FNMap["reflection-m"]   = PIXI.filters.ReflectionFilter;
 _FNMap["reflection-w"]   = PIXI.filters.ReflectionFilter;
+_FNMap["motionblur"]     = PIXI.filters.MotionBlurFilter;
+_FNMap["glow"]           = PIXI.filters.GlowFilter;
     
 Filter_Controller.filterNameMap = _FNMap;
