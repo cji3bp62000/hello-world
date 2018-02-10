@@ -4,6 +4,7 @@
 // Copyright (c) 2018 Tsukimi
 // ----------------------------------------------------------------------------
 // Version
+// 2.0.7 2018/02/10 fix character id wrong bug again, add two new filters
 // 2.0.6 2018/02/02 fix character wrong bug, make special condition(filterArea) for bulge pinch
 // 2.0.5 2018/01/30 ※add new target Object(target->specified char/pic only)
 //                  ※add six new filter Controller
@@ -1223,7 +1224,17 @@ function Filter_Controller() {
                 if(charSprites[charSprites.length+index]) targets.push(charSprites[charSprites.length+index]);
             }
             else if(index > 0) {
-                if(charSprites[index-1]) targets.push(charSprites[index-1]);
+                if(charSprites[index-1] && charSprites[index-1]._character && 
+                   charSprites[index-1]._character._eventId === index) {
+                    targets.push(charSprites[index-1]);
+                } else {
+                    charSprites.some(function(e, i, arr) {
+                        if(e._character && e._character._eventId === index) {
+                            targets.push(e);
+                            return true;
+                        }
+                    }, this);
+                }
             }
         }
         else if(targetObj > 5000 && targetObj <= 5999) {
