@@ -514,7 +514,7 @@ Window_TKMChoice.prototype.constructor = Window_TKMChoice;
     };
 
     Window_TKMChoiceList.prototype.numVisibleRows = function() {
-        var positionType = $gameMessage.choicePositionType();
+        var positionType = $gameMessage.positionType();
         var choices = $gameMessage.choices();
         var numLines = choices.length;
         var maxLines = $TKMvar.choiceList.maxRows;
@@ -582,7 +582,9 @@ Window_TKMChoice.prototype.constructor = Window_TKMChoice;
     };
 
     Window_TKMChoiceList.prototype.isClosed = function() {
-        return ( !this._itemWindows[0] || this._itemWindows[0].isClosed() );
+        var index = this._index - this.topIndex();
+        if(index < 0 || index >= this._itemWindows.length) index = 0;
+        return ( !this._itemWindows[index] || this._itemWindows[index].isClosed() );
     };
 
     Window_TKMChoiceList.prototype.setBackgroundType = function(type) {
