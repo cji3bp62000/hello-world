@@ -808,6 +808,7 @@ Window_TKMChoice.prototype.constructor = Window_TKMChoice;
             this.contents.resize(this.width, this.height);
             this.resetFontSettings();
         }
+        this.updateBackOpacity();
     };
     
     Window_TKMChoice.prototype.selectedTone = function() {
