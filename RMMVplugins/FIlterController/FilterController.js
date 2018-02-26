@@ -4,6 +4,7 @@
 // Copyright (c) 2018 Tsukimi
 // ----------------------------------------------------------------------------
 // Version
+// 2.0.8 2018/02/26 add Displacement Filter
 // 2.0.7 2018/02/10 fix character id wrong bug again, add two new filters
 // 2.0.6 2018/02/02 fix character wrong bug, make special condition(filterArea) for bulge pinch
 // 2.0.5 2018/01/30 ※add new target Object(target->specified char/pic only)
@@ -26,6 +27,13 @@
  * @desc allow decimal when using game variables or not.
  * precision to 3 decimal digits.(0.001)  value: true/false
  * @default true
+ * 
+ * @param displacementImage
+ * @text Displacement Map image
+ * @desc name of displacement map image.
+ * put under img/pictures/ folder
+ * @default DisplacementMap
+ * 
  * 
  * @help
  * *** pixi-filter Controller
@@ -180,6 +188,12 @@
  * @desc trueにすると、変数に小数点が使えるようになる
  * 小数点四位以下四捨五入。 入力値：true/false
  * @default true
+ * 
+ * @param displacementImage
+ * @text Displacement画像名
+ * @desc Displacementの画像の名前。
+ * 画像を img/pictures/ に入れてください。
+ * @default DisplacementMap
  * 
  * @help
  * 
@@ -359,7 +373,7 @@ function Filter_Controller() {
         var value = getParamString(paramNames);
         return (value || '').toUpperCase() === 'TRUE';
     };
-
+    
     if(getParamBoolean(['Use Decimal in Variables', '変数に小数点が使えるようにする'])) {
         
         var _Game_Variables_setValue = Game_Variables.prototype.setValue;
@@ -374,6 +388,8 @@ function Filter_Controller() {
             }
         };
     }
+    
+    var TKMDisplacementMap = getParamString('displacementImage') || '';
     
     //=============================================================================
     // Game_Interpreter
@@ -553,7 +569,10 @@ function Filter_Controller() {
     Filter_Controller.prototype.createFilter = function() {
         var filter;
         if(Filter_Controller.filterNameMap[this._filterType]) {
-            filter = new Filter_Controller.filterNameMap[this._filterType]();
+            if(Filter_Controller.filterNameMap[this._filterType] === PIXI.filters.DisplacementFilter)
+                filter = this.createDisplacement();
+            else
+                filter = new Filter_Controller.filterNameMap[this._filterType]();
         }
         // special settings for filter
         var spInit = Filter_Controller.filterSpecialInit[this._filterType];
@@ -561,6 +580,13 @@ function Filter_Controller() {
             spInit.apply(this, [filter]);
         }
         return filter;
+    };
+    
+    Filter_Controller.prototype.createDisplacement = function() {
+        var s = new Sprite(ImageManager.loadPicture(TKMDisplacementMap));
+        var f = new PIXI.filters.DisplacementFilter(s);
+        SceneManager._scene.addChild(s);
+        return f;
     };
 
     var _defaultParam = {};
@@ -587,6 +613,7 @@ function Filter_Controller() {
     _defaultParam["reflection-w"]   = [0.5, 0,20, 30,100, 1,1];
     _defaultParam["motionblur"]     = [0,0];
     _defaultParam["glow"]           = [0,4,255,255,255];
+    _defaultParam["displacement"]   = [1,1,20];
     
     Filter_Controller.defaultFilterParam = _defaultParam;
     
@@ -851,6 +878,14 @@ function Filter_Controller() {
         filter.color = (~~cp[2])*65536 + (~~cp[3])*256 + (~~cp[4]);
     };
     _updateFilterHandler["glow"] = glow;
+    
+    var disp = function(filter, cp) {
+        filter.maskSprite.x += cp[0];
+        filter.maskSprite.y += cp[1];
+        filter.scale.x = filter.scale.y = cp[2];
+        filter.maskSprite.texture.baseTexture.wrapMode = PIXI.WRAP_MODES.REPEAT;
+    };
+    _updateFilterHandler["displacement"] = disp;
     
     Filter_Controller.updateFilterHandler = _updateFilterHandler;
     //=============================================================================
@@ -1393,5 +1428,6 @@ _FNMap["reflection-m"]   = PIXI.filters.ReflectionFilter;
 _FNMap["reflection-w"]   = PIXI.filters.ReflectionFilter;
 _FNMap["motionblur"]     = PIXI.filters.MotionBlurFilter;
 _FNMap["glow"]           = PIXI.filters.GlowFilter;
+_FNMap["displacement"]   = PIXI.filters.DisplacementFilter;
     
 Filter_Controller.filterNameMap = _FNMap;
