@@ -45,6 +45,12 @@
  * @desc the flash color changing frequency.(frame)
  * @default 4
  * 
+ * @param textAlign
+ * @text text alignment
+ * @desc the alignment of text in choices.
+ * 0=left, 1=center, 2=right
+ * @default 0
+ * 
  * @param -- Advanced settings --
  * @desc 
  * @default 
@@ -185,6 +191,12 @@
  * @text 決定後フラッシュの頻度
  * @desc 決定キーで選択された選択肢のフラッシュの変化速度
  * @default 4
+ * 
+ * @param textAlign
+ * @text 文字揃え
+ * @desc 文字の揃え位置を指定する。
+ * 0=左揃え, 1=中央揃え, 2=右揃え
+ * @default 0
  * 
  * @param -- Advanced settings --
  * @text -- 詳細設定 --
@@ -362,6 +374,7 @@ Window_TKMChoice.prototype.constructor = Window_TKMChoice;
     choiceList.maxRows  = getNumber("maxRows") || 1;
     choiceList.maxRowsC = getNumber("maxRowsC") || 1;
     choiceList.mineLineWidth = getNumber("mineLineWidth") || 96;
+    choiceList.textAlign = getNumber("textAlign");
     
     choiceList.offsetX = 0;
     choiceList.offsetY = 0;
@@ -641,7 +654,9 @@ Window_TKMChoice.prototype.constructor = Window_TKMChoice;
         this._itemWindows[i].refresh();
         var centerPadding = Math.max((28-$TKMvar.choiceList.fontSize)/2, 0);
         var hp = this.choiceHoriPadding(), vp = this.choiceVertiPadding();
-        this._itemWindows[i].drawTextEx(this.commandName(index), hp, vp+centerPadding );
+        var textWidth = this._itemWindows[i].textWidthEx(this.commandName(index));
+        var alignPadding = (rect.width-2*hp-textWidth)*$TKMvar.choiceList.textAlign/2;
+        this._itemWindows[i].drawTextEx(this.commandName(index), hp+alignPadding, vp+centerPadding );
     };
 
 
@@ -824,6 +839,10 @@ Window_TKMChoice.prototype.constructor = Window_TKMChoice;
         this.contents.fontSize = $TKMvar.choiceList.fontSize;
         this.contents.outlineWidth = $TKMvar.choiceList.fontOLWidth; // CHANGED
         this.contents.outlineColor = $TKMvar.choiceList.fontOLColor;
+    };
+
+    Window_TKMChoice.prototype.textWidthEx = function(text) {
+        return this.drawTextEx(text, 0, this.contents.height);
     };
     
     //-----------------------------------------------------------------------------
