@@ -1227,7 +1227,8 @@ function Filter_Controller() {
             target.filters = arr;
             
              // tilemap use special rendering; needs manual area setting
-            if( targetObj === 2 || targetObj === 3 || (filter instanceof PIXI.filters.BulgePinchFilter) ) {
+            if( targetObj === 2 || targetObj === 3 || (filter instanceof PIXI.filters.BulgePinchFilter) || 
+                targetObj === 21 || targetObj === 31) {
                 var margin = 0;
                 var width = Graphics.width + margin * 2;
                 var height = Graphics.height + margin * 2;
