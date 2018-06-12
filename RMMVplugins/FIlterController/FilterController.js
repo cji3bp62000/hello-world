@@ -72,8 +72,8 @@
  * 　　filter-target: what will be included in the effect.
  * 　　　0: screen(map+pictures)
  * 　　　1: whole-screen(including message window)
- *      2: map(tiles+characters)
- *      3: tiles
+ *      2: map(tiles+characters), 21(← +parallax)
+ *      3: tiles, 31(tiles+parallax)
  *      4: all characers
  *      4000+id: character#id (id-> -1:game Player, 
  *                             0:this event, 1~: event#id)
@@ -219,8 +219,8 @@
  *    - エフェクト名: エフェクトの種類。
  *    - 効果ターゲット: 0: 画面
  *                   1: 全画面(メッセージウィンドウ含む)
- *                   2: マップ（全キャラ+地形タイル）
- *                   3: 地形タイル
+ *                   2: マップ（全キャラ+地形タイル）、21:（前記+parallax）
+ *                   3: 地形タイル、31: タイル+parallax
  *                   4: 全キャラ
  *                   4000+x: 特定キャラ(x-> -1: 自キャラ, 
  *                           0: このイベント, 1以上: 該当イベント)
