@@ -1304,6 +1304,13 @@ function Filter_Controller() {
                     }
                 }
                 break;
+
+                case 31:
+                if(!!this._spriteset) {
+                    if(!!this._spriteset._tilemap) {
+                        targets = [this._spriteset._tilemap.lowerZLayer, this._spriteset._tilemap.upperZLayer, this._parallax];
+                    }
+                }
                 
             case 4:
                 if(!!this._spriteset) {
