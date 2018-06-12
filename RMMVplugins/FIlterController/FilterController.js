@@ -1292,6 +1292,10 @@ function Filter_Controller() {
             case 2:
                 if(!!this._spriteset) targets = [this._spriteset._tilemap];
                 break;
+
+            case 21:
+                if(!!this._spriteset) targets = [this._spriteset._baseSprite];
+                break;
                 
             case 3:
                 if(!!this._spriteset) {
