@@ -1278,7 +1278,7 @@ function Filter_Controller() {
             if(!this._spriteset._pictureContainer) return targets;
             var picContainer = this._spriteset._pictureContainer.children;
             var picId = $gameScreen.realPictureId(targetObj-5000);
-            if(picContainer[picId]) targets.push(picContainer[picId]);
+            if(picContainer[picId]) targets.push(picContainer[picId-1]);
         }
         else {
         switch(targetObj) {
