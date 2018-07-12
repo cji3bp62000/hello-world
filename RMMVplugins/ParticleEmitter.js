@@ -62,7 +62,7 @@
  * 　resumePEmitter {id}
  *    エミッターを再開する。
  * 
- * 　pausePEmitter {id}
+ * 　stopPEmitter {id}
  *    エミッターを中止する。（パーティクルが全部消えたあと削除する）
  * 
  * 　deletePEmitter {id}
