@@ -4,7 +4,8 @@
 // Copyright (c) 2018 Tsukimi
 // ---------------------------------------------------------------
 // Version
-// 0.1.1 2018/07/13 add feature: "staticToPlayer" "setAsLocal"
+// 0.1.2 2018/07/13 add feature: "moveQ", "moveQR"; fix EasingFunctions
+// 0.1.1 2018/07/13 add feature: "staticToPlayer", "setAsLocal"
 // 0.1.0 2018/07/12 beta release
 //================================================================
 
@@ -47,6 +48,8 @@
  * プラグインコマンド：
  *  イベントコマンド「プラグインコマンド」から実行。
  *  （パラメータの間は半角スペースで区切る）
+ * 
+ * ` *** 以下の PEmitter を全部 PE に省略できます。 ***
  * 
  * 　createPEmitter {id} {config} {eventId} {imageNames ...}
  *    エミッターを作る。
@@ -119,8 +122,41 @@
  * 　　　→全パーティクルも右に一マス移動する）
  * 
  * 
+ * 高度な移動コマンド：
+ * （Q：Queue、R：Routine）
+ * 
+ * 　movePEmitterPosQ {id} {x} {y} {duration} (easingFunction)
+ * 　　移動コマンドの待ち列に新しい移動を追加する。
+ * 　　前の移動が終わった後、自動で次の移動が再生される。
+ * 　　主に移動コマンドを一気に指定したい時に使う。
+ * 
+ *    例: movePEmitterPosQ star#1 0 20 60 easeOutBounce
+ *    　  movePEmitterPosQ star#1 20 x 30 easeInBounce
+ * 　　　　(0,20)に移動した後、(20,20)に移動する
+ * 
+ * 
+ * 　movePEmitterPosQR {id} {x} {y} {duration} (easingFunction)
+ * 　　ループ移動コマンド配列に移動を追加する。
+ * 　　
+ *    例: movePEmitterPosQR star#1 -20 20 30
+ *    　  movePEmitterPosQR star#1 20 20 30
+ *    　  movePEmitterPosQR star#1 20 -20 30
+ *    　  movePEmitterPosQR star#1 -20 -20 30
+ * 
+ * 　　　　(-20,20)→(20,20)→(20,-20)→(-20,-20)→(-20,20)→…
+ * 　　　　辺の長さが40の正方形に沿って時計回りに移動し続ける。
+ * 
+ * 
+ * 　clearPEmitterPosQ {id}
+ * 　　移動コマンドの待ち列をクリアする。
+ * 
+ * 　clearPEmitterPosQR {id}
+ * 　　ループ移動コマンド配列をクリアする。
+ * 
  * ---------------------------------------------------
  * タグによるエミッター自動生成も可能。
+ * 
+ * ` *** 以下の PEmitter を全部 PE に省略できます。 ***
  * 
  * マップ：
  * <PEmitter:id,config,imageNames,...>
@@ -135,6 +171,9 @@
  * <SetPEmitterZ:id,z>
  * 　コマンド setPEmitterZ と同じ効果。
  * 
+ * <MovePEmitterPosQR:id,x,y,duration,easingFunc>
+ * 　コマンド movePEmitterPosQR と同じ効果。
+ * 
  * 
  * イベント：
  * <PEmitter:id,config,imageNames,...>
@@ -148,6 +187,13 @@
  * 
  * <SetPEmitterZ:id,z>
  * 　コマンド setPEmitterZ と同じ効果。
+ * 
+ * <SetPEmitterAsLocal:id>
+ * 　コマンド setPEmitterAsLocal id true と同じ効果。
+ * 
+ * <MovePEmitterPosQR:id,x,y,duration,easingFunc>
+ * 　コマンド movePEmitterPosQR と同じ効果。
+ * 
  */
 
 var $particleConfig = {};
@@ -219,6 +265,7 @@ DataManager.loadParticleConfig = function(src) {
         _Game_Interpreter_pluginCommand.apply(this, arguments);
         var id, dur;
         switch ((command || '').toUpperCase()) {
+            case 'CREATEPE' :
             case 'CREATEPEMITTER' :
             // args: id, config, eventId, [imageNames ...]
                 var id = args.shift();
@@ -233,30 +280,42 @@ DataManager.loadParticleConfig = function(src) {
                 $gameMap.createPEmitter(id, args, config, eventId);
                 break;
                 
+            case 'PAUSEPE' :
             case 'PAUSEPEMITTER' :
                 $gameMap.pausePEmitter(args[0]);
                 break;
                 
+            case 'RESUMEPE' :
             case 'RESUMEPEMITTER' :
                 $gameMap.resumePEmitter(args[0]);
                 break;
                 
+            case 'STOPPE' :
             case 'STOPPEMITTER' :
                 $gameMap.stopPEmitter(args[0]);
                 break;
                 
+            case 'DELETEPE' :
             case 'DELETEPEMITTER' :
                 $gameMap.deletePEmitter(args[0]);
                 break;
                 
+            case 'SETPEPOS' :
             case 'SETPEMITTERPOS' :
                 $gameMap.setPEmitterPos(args[0], getNumberOrX(args[1]), getNumberOrX(args[2]));
                 break;
                 
+            case 'SETPEZ' :
             case 'SETPEMITTERZ' :
                 $gameMap.setPEmitterZ(args[0], getNumberOrX(args[1]));
                 break;
                 
+            case 'SETPEASLOCAL' :
+            case 'SETPEMITTERASLOCAL' :
+                $gameMap.setPEmitterAsLocal(args[0], args[1].toUpperCase() === "TRUE");
+                break;
+                
+            case 'MOVEPEPOS' :
             case 'MOVEPEMITTERPOS' :
                 $gameMap.movePEmitterPos(args[0], 
                                          getNumberOrX(args[1]), 
@@ -265,8 +324,34 @@ DataManager.loadParticleConfig = function(src) {
                                          args[4] || 'linear' );
                 break;
                 
-            case 'SETPEMITTERASLOCAL' :
-                $gameMap.setPEmitterAsLocal(args[0], args[1].toUpperCase() === "TRUE");
+            case 'MOVEPEPOSQ' :
+            case 'MOVEPEMITTERPOSQ' :
+                $gameMap.movePEmitterPosQ(args[0], [
+                                         getNumberOrX(args[1]), 
+                                         getNumberOrX(args[2]),
+                                         Number(args[3]) || 1,
+                                         args[4] || 'linear' ]
+                                         );
+                break;
+                
+            case 'MOVEPEPOSQR' :
+            case 'MOVEPEMITTERPOSQR' :
+                $gameMap.movePEmitterPosQR(args[0], [
+                                         getNumberOrX(args[1]), 
+                                         getNumberOrX(args[2]),
+                                         Number(args[3]) || 1,
+                                         args[4] || 'linear' ]
+                                          );
+                break;
+                
+            case 'CLEARPEPOSQ' :
+            case 'CLEARPEMITTERPOSQ' :
+                $gameMap.ClearPEmitterPosQ(args[0]);
+                break;
+                
+            case 'CLEARPEPOSQR' :
+            case 'CLEARPEMITTERPOSQR' :
+                $gameMap.ClearPEmitterPosQR(args[0]);
                 break;
         }
     };
@@ -407,6 +492,8 @@ DataManager.loadParticleConfig = function(src) {
         this._updateParam = {};
         
         this._moveRoute = null;
+        this._moveRouteQ = [];
+        this._moveRouteQR = [];
     };
 
     Game_PEmitter.prototype.pause = function() {
@@ -445,14 +532,35 @@ DataManager.loadParticleConfig = function(src) {
         this._updateParam[key] = value;
     };
     
-    Game_PEmitter.prototype.createMoveRoute = function(dx, dy, dur, easefunc) {
+    Game_PEmitter.prototype.createMoveRoute = function(args) {
+        if(!args) return;
         this._moveRoute = {
             t: 0,
             b: [this._shiftX, this._shiftY],
-            c: [dx-this._shiftX, dy-this._shiftY],
-            d: dur,
-            easefunc: easefunc
+            c: [args[0]-this._shiftX, args[1]-this._shiftY],
+            d: args[2],
+            easefunc: args[3]
         }
+    };
+    
+    Game_PEmitter.prototype.clearMoveRoute = function() {
+        delete this._moveRoute;
+    };
+    
+    Game_PEmitter.prototype.createMoveRouteQ = function(args) {
+        this._moveRouteQ.push(args);
+    };
+    
+    Game_PEmitter.prototype.clearMoveRouteQ = function() {
+        this._moveRouteQ = [];
+    };
+    
+    Game_PEmitter.prototype.createMoveRouteQR = function(args) {
+        this._moveRouteQR.push(args);
+    };
+    
+    Game_PEmitter.prototype.clearMoveRouteQR = function() {
+        this._moveRouteQR = [];
     };
     
     Game_PEmitter.prototype.update = function() {
@@ -460,12 +568,27 @@ DataManager.loadParticleConfig = function(src) {
     };
     
     Game_PEmitter.prototype.updateMove = function() {
-        if(!this._moveRoute) return;
+        if(!this._moveRoute) {
+            this.getMoveRouteFromQ();
+            if(!this._moveRoute) {
+                this.copyMoveRouteQR();
+                this.getMoveRouteFromQ();
+                if(!this._moveRoute) return;
+            }
+        }
         var m = this._moveRoute;
         m.t++;
         this._shiftX = EasingFunctions[m.easefunc](m.t, m.b[0], m.c[0], m.d);
         this._shiftY = EasingFunctions[m.easefunc](m.t, m.b[1], m.c[1], m.d);
         if(m.t >= m.d) delete this._moveRoute;
+    };
+    
+    Game_PEmitter.prototype.getMoveRouteFromQ = function() {
+        this.createMoveRoute(this._moveRouteQ.shift());
+    };
+    
+    Game_PEmitter.prototype.copyMoveRouteQR = function() {
+        this._moveRouteQ = this._moveRouteQR.slice();
     };
 
     //==================
@@ -543,21 +666,18 @@ DataManager.loadParticleConfig = function(src) {
     Game_Map.prototype.setPEmitterPos = function(id, x, y) {
         var e = this._PEmitterArr[id];
         if(!e) return;
-        
         e.setPos(x, y);
     };
 
     Game_Map.prototype.setPEmitterZ = function(id, z) {
         var e = this._PEmitterArr[id];
         if(!e) return;
-        
         e.setZ(z);
     };
 
     Game_Map.prototype.setPEmitterAsLocal = function(id, isLocal) {
         var e = this._PEmitterArr[id];
         if(!e) return;
-        
         e.setAsLocal(isLocal);
     };
 
@@ -565,8 +685,31 @@ DataManager.loadParticleConfig = function(src) {
     Game_Map.prototype.movePEmitterPos = function(id, dx, dy, dur, easefunc) {
         var e = this._PEmitterArr[id];
         if(!e) return;
-        
         e.createMoveRoute(dx, dy, dur, easefunc);
+    };
+    
+    Game_Map.prototype.movePEmitterPosQ = function(id, args) {
+        var e = this._PEmitterArr[id];
+        if(!e) return;
+        e.createMoveRouteQ(args);
+    };
+    
+    Game_Map.prototype.movePEmitterPosQR = function(id, args) {
+        var e = this._PEmitterArr[id];
+        if(!e) return;
+        e.createMoveRouteQR(args);
+    };
+    
+    Game_Map.prototype.clearPEmitterPosQ = function(id) {
+        var e = this._PEmitterArr[id];
+        if(!e) return;
+        e.clearMoveRouteQ();
+    };
+    
+    Game_Map.prototype.clearPEmitterPosQR = function(id) {
+        var e = this._PEmitterArr[id];
+        if(!e) return;
+        e.clearMoveRouteQR();
     };
     
     //=========================
@@ -581,8 +724,9 @@ DataManager.loadParticleConfig = function(src) {
     };
 
     Game_Map.prototype.setupTKMPEmitters = function() {
-        if ($dataMap.metaArray === undefined) return;
-        var eArray = $dataMap.metaArray.PEmitter;
+        var ma = $dataMap.metaArray;
+        if (ma === undefined) return;
+        var eArray = ma.PEmitter || ma.PE;
         if(eArray) {
             for(var i = 0; i < eArray.length; i++) {
                 var e = eArray[i].split(',');
@@ -593,7 +737,8 @@ DataManager.loadParticleConfig = function(src) {
                 this.createPEmitter(id, e, config, eventId);
             }
         }
-        eArray = $dataMap.metaArray.SetPEmitterZ;
+        
+        eArray = ma.SetPEmitterZ || ma.SetPEZ;
         if(eArray) {
             for(var i = 0; i < eArray.length; i++) {
                 var e = eArray[i].split(',');
@@ -603,7 +748,8 @@ DataManager.loadParticleConfig = function(src) {
                 this.setPEmitterZ(id, z);
             }
         }
-        eArray = $dataMap.metaArray.SetPEmitterPos;
+        
+        eArray = ma.SetPEmitterPos || ma.SetPEPos;
         if(eArray) {
             for(var i = 0; i < eArray.length; i++) {
                 var e = eArray[i].split(',');
@@ -611,6 +757,19 @@ DataManager.loadParticleConfig = function(src) {
                 var x = getNumberOrX(e.shift());
                 var y = getNumberOrX(e.shift());
                 this.setPEmitterPos(id, x, y);
+            }
+        }
+        
+        eArray = ma.MovePEmitterPosQR || ma.MovePEPosQR;
+        if(eArray) {
+            for(var i = 0; i < eArray.length; i++) {
+                var e = eArray[i].split(',');
+                var id = e.shift().trim();
+                var x = getNumberOrX(e.shift());
+                var y = getNumberOrX(e.shift());
+                var d = Number(e.shift());
+                var efunc = (e.shift() || "").trim() || "linear";
+                this.movePEmitterPosQR(id, [x, y, d, efunc]);
             }
         }
     };
@@ -627,8 +786,10 @@ DataManager.loadParticleConfig = function(src) {
     };
 
     Game_Event.prototype.setupTKMPEmitters = function() {
-        if (this.event().metaArray === undefined) return;
-        var eArray = this.event().metaArray.PEmitter;
+        var ma = this.event().metaArray;
+        if (ma === undefined) return;
+        
+        var eArray = ma.PEmitter || ma.PE;
         if(eArray) {
             for(var i = 0; i < eArray.length; i++) {
                 var e = eArray[i].split(',');
@@ -639,7 +800,8 @@ DataManager.loadParticleConfig = function(src) {
                 $gameMap.createPEmitter(id, e, config, eventId);
             }
         }
-        eArray = this.event().metaArray.SetPEmitterZ;
+        
+        eArray = ma.SetPEmitterZ || ma.SetPEZ;
         if(eArray) {
             for(var i = 0; i < eArray.length; i++) {
                 var e = eArray[i].split(',');
@@ -649,7 +811,8 @@ DataManager.loadParticleConfig = function(src) {
                 $gameMap.setPEmitterZ(id, z);
             }
         }
-        eArray = this.event().metaArray.SetPEmitterPos;
+        
+        eArray = ma.SetPEmitterPos || ma.SetPEPos;
         if(eArray) {
             for(var i = 0; i < eArray.length; i++) {
                 var e = eArray[i].split(',');
@@ -657,6 +820,29 @@ DataManager.loadParticleConfig = function(src) {
                 var x = getNumberOrX(e.shift());
                 var y = getNumberOrX(e.shift());
                 $gameMap.setPEmitterPos(id, x, y);
+            }
+        }
+        
+        eArray = ma.SetPEmitterAsLocal || ma.SetPEAsLocal;
+        if(eArray) {
+            for(var i = 0; i < eArray.length; i++) {
+                var e = eArray[i].split(',');
+                var id = e.shift().trim();
+                $gameMap.setPEmitterAsLocal(id, true);
+            }
+        }
+        
+        eArray = ma.MovePEmitterPosQR || ma.MovePEPosQR;
+        if(eArray) {
+            for(var i = 0; i < eArray.length; i++) {
+                var e = eArray[i].split(',');
+                var id = e.shift().trim();
+                var x = getNumberOrX(e.shift());
+                var y = getNumberOrX(e.shift());
+                var d = Number(e.shift());
+                var efunc = (e.shift() || "").trim() || "linear";
+                console.log(efunc);
+                $gameMap.movePEmitterPosQR(id, [x, y, d, efunc]);
             }
         }
     };
@@ -760,6 +946,7 @@ DataManager.loadParticleConfig = function(src) {
  * All rights reserved.
  * https://raw.github.com/danro/jquery-easing/master/LICENSE
  * ======================================================== */
+var EasingFunctions;
 if(EasingFunctions === undefined) {
     EasingFunctions = 
     {
