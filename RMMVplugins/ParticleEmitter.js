@@ -365,8 +365,9 @@ DataManager.loadParticleConfig = function(src) {
             else if (e._eventId < 0) event = $gamePlayer;
             
             if(e._isLocal) {
-                this._emitterContainer.x = event.screenX() + e._shiftX;
-                this._emitterContainer.y = event.screenY() + e._shiftY;
+                this._emitterContainer.x = event.screenX();
+                this._emitterContainer.y = event.screenY();
+                this._emitter.updateOwnerPos(e._shiftX, e._shiftY);
             }
             else {
                 var curOPos = SceneManager._scene._spriteset._tilemap.origin;
