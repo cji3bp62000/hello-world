@@ -4,6 +4,7 @@
 // Copyright (c) 2018 Tsukimi
 // ---------------------------------------------------------------
 // Version
+// 0.1.1 2018/07/13 add feature: "staticToPlayer" "setAsLocal"
 // 0.1.0 2018/07/12 beta release
 //================================================================
 
@@ -16,6 +17,12 @@
  * @type string[]
  * @desc 使う設定ファイルの名前
  * @default []
+ * 
+ * @param staticToPlayer
+ * @text プレイヤー固定化(staticToPlayer)
+ * @type boolean
+ * @desc プレイヤーに設定したエミッターはマップ移動後に消さないべきか否か
+ * @default true
  * 
  * @help
  * 
@@ -103,6 +110,13 @@
  * 
  *    例: setPEmitterZ star#1 5
  * 　　　　発射位置を通常キャラの上にする。
+ * 
+ * 
+ * 　setPEmitterAsLocal {id} {true/false}
+ *    マップにではなく、
+ * 　　イベントの相対位置にパーティクルを生成するかどうか。
+ * 　　（trueにすると、キャラが右に一マス移動する
+ * 　　　→全パーティクルも右に一マス移動する）
  * 
  * 
  * ---------------------------------------------------
@@ -250,6 +264,10 @@ DataManager.loadParticleConfig = function(src) {
                                          Number(args[3]) || 1,
                                          args[4] || 'linear' );
                 break;
+                
+            case 'SETPEMITTERASLOCAL' :
+                $gameMap.setPEmitterAsLocal(args[0], args[1].toUpperCase() === "TRUE");
+                break;
         }
     };
     
@@ -346,13 +364,19 @@ DataManager.loadParticleConfig = function(src) {
             if(e._eventId > 0) event = $gameMap.event(e._eventId);
             else if (e._eventId < 0) event = $gamePlayer;
             
-            var curOPos = SceneManager._scene._spriteset._tilemap.origin;
-            var dx = curOPos.x - this._startOPos.x, dy = curOPos.y - this._startOPos.y;
-            this._emitterContainer.x = -dx;
-            this._emitterContainer.y = -dy;
-            this._emitter.updateOwnerPos(event.screenX() + dx + e._shiftX, event.screenY() + dy + e._shiftY);
+            if(e._isLocal) {
+                this._emitterContainer.x = event.screenX() + e._shiftX;
+                this._emitterContainer.y = event.screenY() + e._shiftY;
+            }
+            else {
+                var curOPos = SceneManager._scene._spriteset._tilemap.origin;
+                var dx = curOPos.x - this._startOPos.x, dy = curOPos.y - this._startOPos.y;
+                this._emitterContainer.x = -dx;
+                this._emitterContainer.y = -dy;
+                this._emitter.updateOwnerPos(event.screenX() + dx + e._shiftX, event.screenY() + dy + e._shiftY);
+            }
         }
-        else  this._emitter.updateOwnerPos(e._shiftX, e._shiftY);
+        else this._emitter.updateOwnerPos(e._shiftX, e._shiftY);
         this._emitterContainer.z = e._z;
     };
 
@@ -373,9 +397,11 @@ DataManager.loadParticleConfig = function(src) {
 
         this._eventId = eventId;
         if(this._eventId !== undefined) this._mapId = $gameMap.mapId();
+        if(getParamBoolean("staticToPlayer") && this._eventId < 0) this._mapId = undefined;
         this._shiftX = 0;
         this._shiftY = 0;
         this._z = 3;
+        this._isLocal = false;
         this._totalParam = {};
         this._updateParam = {};
         
@@ -407,6 +433,10 @@ DataManager.loadParticleConfig = function(src) {
 
     Game_PEmitter.prototype.setZ = function(z) {
         if(z || z === 0) this._z = z;
+    };
+
+    Game_PEmitter.prototype.setAsLocal = function(isLocal) {
+        this._isLocal = isLocal;
     };
     
     Game_PEmitter.prototype.setParam = function(key, value) {
@@ -522,6 +552,14 @@ DataManager.loadParticleConfig = function(src) {
         
         e.setZ(z);
     };
+
+    Game_Map.prototype.setPEmitterAsLocal = function(id, isLocal) {
+        var e = this._PEmitterArr[id];
+        if(!e) return;
+        
+        e.setAsLocal(isLocal);
+    };
+
 
     Game_Map.prototype.movePEmitterPos = function(id, dx, dy, dur, easefunc) {
         var e = this._PEmitterArr[id];
