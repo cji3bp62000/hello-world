@@ -328,11 +328,12 @@ DataManager.loadParticleConfig = function(src) {
                 
             case 'MOVEPEPOS' :
             case 'MOVEPEMITTERPOS' :
-                $gameMap.movePEmitterPos(args[0], 
+                $gameMap.movePEmitterPos(args[0], [
                                          getNumberOrX(args[1]), 
                                          getNumberOrX(args[2]),
                                          Number(args[3]) || 1,
-                                         args[4] || 'linear' );
+                                         args[4] || 'linear' ]
+                                        );
                 break;
                 
             case 'MOVEPEPOSQ' :
@@ -705,10 +706,10 @@ DataManager.loadParticleConfig = function(src) {
     };
 
 
-    Game_Map.prototype.movePEmitterPos = function(id, dx, dy, dur, easefunc) {
+    Game_Map.prototype.movePEmitterPos = function(id, args) {
         var e = this._PEmitterArr[id];
         if(!e) return;
-        e.createMoveRoute([dx, dy, dur, easefunc]);
+        e.createMoveRoute(args);
     };
     
     Game_Map.prototype.movePEmitterPosQ = function(id, args) {
