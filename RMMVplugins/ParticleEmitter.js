@@ -122,6 +122,12 @@
  * 　　　→全パーティクルも右に一マス移動する）
  * 
  * 
+ * 　setPEmitterStaticToPlayer {id} {true/false}
+ *    プレイヤーに設定したエミッターは
+ *    　マップ移動後に消さないべきか否か。
+ * 　　プレイヤーに適用しているエミッターにしか効果がない。
+ * 
+ * 
  * 高度な移動コマンド：
  * （Q：Queue、R：Routine）
  * 
@@ -313,6 +319,11 @@ DataManager.loadParticleConfig = function(src) {
             case 'SETPEASLOCAL' :
             case 'SETPEMITTERASLOCAL' :
                 $gameMap.setPEmitterAsLocal(args[0], args[1].toUpperCase() === "TRUE");
+                break;
+                
+            case 'SETPESTATICTOPLAYER' :
+            case 'SETPEMITTERSTATICTOPLAYER' :
+                $gameMap.setPEmitterStaticToPlayer(args[0], args[1].toUpperCase() === "TRUE");
                 break;
                 
             case 'MOVEPEPOS' :
@@ -590,6 +601,12 @@ DataManager.loadParticleConfig = function(src) {
     Game_PEmitter.prototype.copyMoveRouteQR = function() {
         this._moveRouteQ = this._moveRouteQR.slice();
     };
+    
+    Game_PEmitter.prototype.setStaticToPlayer = function(isStatic) {
+        if(isNaN(this._eventId) || this._eventId >= 0) return;
+        if( isStatic ) this._mapId = undefined;
+        else this._mapId = $gameMap.mapId();
+    };
 
     //==================
     // ImageManager
@@ -679,6 +696,12 @@ DataManager.loadParticleConfig = function(src) {
         var e = this._PEmitterArr[id];
         if(!e) return;
         e.setAsLocal(isLocal);
+    };
+    
+    Game_Map.prototype.setPEmitterStaticToPlayer = function(id, isStatic) {
+        var e = this._PEmitterArr[id];
+        if(!e) return;
+        e.setStaticToPlayer(isStatic);
     };
 
 
