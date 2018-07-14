@@ -49,7 +49,7 @@
  *  イベントコマンド「プラグインコマンド」から実行。
  *  （パラメータの間は半角スペースで区切る）
  * 
- * ` *** 以下の PEmitter を全部 PE に省略できます。 ***
+ * 　*** 以下の PEmitter を全部 PE に省略できます。 ***
  * 
  * 　createPEmitter {id} {config} {eventId} {imageNames ...}
  *    エミッターを作る。
@@ -162,7 +162,7 @@
  * ---------------------------------------------------
  * タグによるエミッター自動生成も可能。
  * 
- * ` *** 以下の PEmitter を全部 PE に省略できます。 ***
+ * 　*** 以下の PEmitter を全部 PE に省略できます。 ***
  * 
  * マップ：
  * <PEmitter:id,config,imageNames,...>
@@ -708,7 +708,7 @@ DataManager.loadParticleConfig = function(src) {
     Game_Map.prototype.movePEmitterPos = function(id, dx, dy, dur, easefunc) {
         var e = this._PEmitterArr[id];
         if(!e) return;
-        e.createMoveRoute(dx, dy, dur, easefunc);
+        e.createMoveRoute([dx, dy, dur, easefunc]);
     };
     
     Game_Map.prototype.movePEmitterPosQ = function(id, args) {
