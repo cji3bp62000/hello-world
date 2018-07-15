@@ -4,10 +4,200 @@
 // Copyright (c) 2018 Tsukimi
 // ---------------------------------------------------------------
 // Version
+// 0.1.2-en 2018/07/13 add english description
 // 0.1.2 2018/07/13 add feature: "moveQ", "moveQR"; fix EasingFunctions
 // 0.1.1 2018/07/13 add feature: "staticToPlayer", "setAsLocal"
 // 0.1.0 2018/07/12 beta release
 //================================================================
+
+/*:
+ * @plugindesc ParticleEmitter
+ * @author Tsukimi
+ * 
+ * @param configName
+ * @type string[]
+ * @desc config files downloaded from
+ * https://pixijs.io/pixi-particles-editor/
+ * @default []
+ * 
+ * @param staticToPlayer
+ * @type boolean
+ * @desc should emitter set to player(-1) remain exist after map transition
+ * @default true
+ * 
+ * @help
+ * 
+ * ParticleEmitter
+ * author：tsukimi
+ * 
+ * description：
+ * A plugin controlling pixi-particles.js
+ * to make particle system in RM MV.
+ * 
+ * you can make particle emitter config files here!:
+ * https://pixijs.io/pixi-particles-editor/
+ * ** First scroll down and set Rederer to Canvas2D
+ *    to get correct visual effects !!
+ * 
+ * ・create a folder named "particles" inside data/ 
+ *   and put config file inside it
+ * ・create a folder named "particles" inside img/ 
+ *   and put particle image file inside it
+ * 
+ * for more information, check :
+ * https://forums.rpgmakerweb.com/index.php?threads/.97729/
+ * 
+ * ---------------------------------------------------
+ * plugin command：
+ * 
+ * 　*** You can brief all "PEmitter" to "PE" for short ***
+ * 
+ * 　createPEmitter {id} {config} {eventId} {imageNames ...}
+ *    create particle emitter.
+ * 　　id: id of this controller. choose a name you like!
+ * 　　config: config name download from the website (.json no need) 
+ * 　　eventId: the event which this emitter chase
+ * 　　　　　　　-1：player、0：this event、1~：event#
+ * 　　　　　　　x：screen、screen：screen(only on current map)
+ * 　　imageNames: image name inside img/particles/. 
+ * 
+ *    ex: createPEmitter star#1 starEmitter x star1 star2
+ * 　　　Create an emitter named star#1, config is starEmitter.json,
+ * 　　　position based on screen. Images are star1.png & star2.png.
+ * 
+ * 
+ * 　pausePEmitter {id}
+ *    pause emitting.
+ * 
+ * 　resumePEmitter {id}
+ *    resume emitting.
+ * 
+ * 　stopPEmitter {id}
+ *    stop emitter and delete after all particle i dead.
+ * 
+ * 　deletePEmitter {id}
+ * 　 delete emitter and all particles immediately.
+ * 
+ * 
+ * 　setPEmitterPos {id} {x} {y}
+ *    set emitter (relative) position to (x,y).
+ * 　　input→x: don't move
+ * 
+ *    ex: setPEmitterPos star#1 10 x
+ * 　　　　set emitter star#1's x coordinate to 10. (y doesn't change)
+ * 
+ * 　movePEmitterPos {id} {x} {y} {duration} (easingFunction)
+ *    move emitter (relative) position to (x,y) by {duration} frame.
+ * 　　input→x: don't move
+ * 　　easingFunction: move easing functions at https://easings.net/
+ * 　　will be 'linear' if not specified
+ * 
+ *    ex: movePEmitterPos star#1 -10 20 60 easeOutBounce
+ * 　　　　　move emitter star#1 to (-10,20) in 60 frames, with
+ * 　　　　　bouncing animation.
+ * 
+ * 
+ * 　setPEmitterZ {id} {z}
+ *    set emitter Z layer.
+ * 　　z layer：
+ * 　　　0 : lower tile
+ * 　　　1 : lower character
+ * 　　　3 : character
+ * 　　　4 : upper tile
+ * 　　　5 : upper character
+ * 　　　6 : shadow of airship
+ * 　　　7 : Balloon
+ * 　　　8 : animation
+ * 　　　9 : map destination (white rectangle)
+ * 
+ *    ex: setPEmitterZ star#1 5
+ * 　　　　set emitter star#1 z-layer to upper character.
+ * 
+ * 
+ * 　setPEmitterAsLocal {id} {true/false}
+ * 　　create particle to event relative position
+ * 　　instead of to the map.
+ * 　　（if true, event move right -> all particle move right）
+ * 
+ * 
+ * 　setPEmitterStaticToPlayer {id} {true/false}
+ * 　　should emitter set to player(-1) remain exist
+ * 　　after map transition.(true -> exist)
+ * 　　*Only effect on emitter set to player.
+ * 
+ * 
+ * Advanced moving：
+ * （Q：Queue、R：Routine）
+ * 
+ * 　movePEmitterPosQ {id} {x} {y} {duration} (easingFunction)
+ * 　　Add move command to move queue. Will start next move
+ * 　　after last move is finish.
+ * 
+ *    ex: movePEmitterPosQ star#1 0 20 60 easeOutBounce
+ *    　  movePEmitterPosQ star#1 20 x 30 easeInBounce
+ * 　　　　Move to (0,20) in 60f then move to (20,20) in 30f.
+ * 
+ * 
+ * 　movePEmitterPosQR {id} {x} {y} {duration} (easingFunction)
+ * 　　Add move command to routine move queue.
+ * 　　will repeat moving command in routine move queue.
+ * 　　
+ *    ex: movePEmitterPosQR star#1 -20 20 30
+ *    　  movePEmitterPosQR star#1 20 20 30
+ *    　  movePEmitterPosQR star#1 20 -20 30
+ *    　  movePEmitterPosQR star#1 -20 -20 30
+ * 
+ * 　　　　(-20,20)→(20,20)→(20,-20)→(-20,-20)→(-20,20)→…
+ * 
+ * 
+ * 　clearPEmitterPosQ {id}
+ * 　　clear move queue.
+ * 
+ * 　clearPEmitterPosQR {id}
+ * 　　clear routine move queue.
+ * 
+ * ---------------------------------------------------
+ * You can also create by map and event tags.
+ * 
+ * 　*** You can brief all "PEmitter" to "PE" for short ***
+ * 
+ * Map：
+ * <PEmitter:id,config,imageNames,...>
+ * 　Same as createPEmitter.
+ * 　However, eventId will be set to screen.
+ * 
+ * 　　ex：<PEmitter:star#1,starEmitter,star1,star2>
+ * 
+ * <SetPEmitterPos:id,x,y>
+ * 　Same as setPEmitterPos.
+ * 
+ * <SetPEmitterZ:id,z>
+ * 　Same as setPEmitterZ.
+ * 
+ * <MovePEmitterPosQR:id,x,y,duration,easingFunc>
+ * 　Same as movePEmitterPosQR.
+ * 
+ * 
+ * event：
+ * <PEmitter:id,config,imageNames,...>
+ * 　Same as createPEmitter.
+ * 　However, eventId will be set to this event.
+ * 
+ * 　　ex：<PEmitter:star#1,starEmitter,star1,star2>
+ * 
+ * <SetPEmitterPos:id,x,y>
+ * 　Same as setPEmitterPos.
+ * 
+ * <SetPEmitterZ:id,z>
+ * 　Same as setPEmitterZ.
+ * 
+ * <SetPEmitterAsLocal:id>
+ * 　Same as setPEmitterPosAsLocal.
+ * 
+ * <MovePEmitterPosQR:id,x,y,duration,easingFunc>
+ * 　Same as movePEmitterPosQR.
+ * 
+ */
 
 /*:ja
  * @plugindesc パーティクル
