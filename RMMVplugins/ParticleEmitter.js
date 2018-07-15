@@ -81,10 +81,15 @@
  * 
  * 　setPEmitterPos {id} {x} {y}
  *    set emitter (relative) position to (x,y).
- * 　　input→x: don't move
+ * 　　 Besides numbers, you can also set x & y as:
+ * 　　 x: Don't change from current parameter value
+ * 　　 v<Number>: value of Game Variable<Number>
+ * 　　 r<#1>~<#2>: Random value between #1 and #2.
+ * 　　             #1 and #2 can also be variables.
  * 
  *    ex: setPEmitterPos star#1 10 x
  * 　　　　set emitter star#1's x coordinate to 10. (y doesn't change)
+ * 
  * 
  * 　movePEmitterPos {id} {x} {y} {duration} (easingFunction)
  *    move emitter (relative) position to (x,y) by {duration} frame.
@@ -271,10 +276,15 @@
  * 
  * 　setPEmitterPos {id} {x} {y}
  *    エミッターの相対位置を(x,y)に設置する。
- * 　　数値→x: 調整しない
+ * 　　x,y の値は数字以外、以下の文字も設定可能です。
+ * 　　　x: 現在のパラメータ（パラメータを変えない）
+ * 　　　v<数字>: 変数番号<数字>の値を代入する
+ * 　　　r<#1>~<#2>: #1~#2の間の乱数生成。
+ * 　　　            #1と#2もv<数字>で指定可能。
  * 
  *    例: setPEmitterPos star#1 10 x
  * 　　　　star#1のx座標を10にする。（yは変えない）
+ * 
  * 
  * 　movePEmitterPos {id} {x} {y} {duration} (easingFunction)
  *    エミッターの相対位置を{duration}フレーム掛けて(x,y)に移動する。
