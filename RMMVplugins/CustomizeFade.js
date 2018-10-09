@@ -25,11 +25,11 @@
  * 
  * 　customizefade dur/duration/time [フェード時間]
  * 　　フェード時間(f)を調整する。（デフォ：24f）
- * 　　例：customfade dur 90
+ * 　　例：customizefade dur 90
  * 
  * 　customizefade color [r] [g] [b]
  * 　　フェードの色を指定する。（値範囲：0~255）
- * 　　例：customfade color 255 0 0
+ * 　　例：customizefade color 255 0 0
  */
 
 (function() {
