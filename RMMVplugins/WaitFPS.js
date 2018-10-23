@@ -12,7 +12,7 @@
  * 
  * @param momentFPSThreshold
  * @text 瞬間FPS閾値
- * @type variable
+ * @type Number
  * @default 57
  * 
  * @param meanFPSFrames
