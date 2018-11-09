@@ -3,6 +3,7 @@
 // by Tsukimi
 // Last Updated: 2018.10.22
 // update history:
+// 2018.11.09 v0.2 add max Wait Time
 // 2018.10.22 v0.1 finished
 //========================================
 
@@ -24,6 +25,11 @@
  * @text 平均FPS閾値
  * @type Number
  * @default 50
+ * 
+ * @param maxWaitTime
+ * @text 最大待ち時間
+ * @type Number
+ * @default 60
  * 
  * @help
  * 
@@ -66,11 +72,18 @@
     var momentFPSThreshold = getParamNumber("momentFPSThreshold");
     var meanFPSThreshold = getParamNumber("meanFPSThreshold");
     var meanFPSFrames = getParamNumber("meanFPSFrames");
+    var maxWaitTime = getParamNumber("maxWaitTime");
     
     //===========================
     // Game_Interpreter
     //  Plugin Command setting.
     //===========================
+    
+    var _Game_Interpreter_clear = Game_Interpreter.prototype.clear;
+    Game_Interpreter.prototype.clear = function() {
+        _Game_Interpreter_clear.apply(this, arguments);
+        this._MFPSwait = maxWaitTime;
+    };
     
     var _Game_Interpreter_pluginCommand      = Game_Interpreter.prototype.pluginCommand;
     Game_Interpreter.prototype.pluginCommand = function(command, args) {
@@ -85,9 +98,11 @@
     Game_Interpreter.prototype.updateWaitMode = function() {
         var waiting = false;
         if(this._waitMode == "fps") {
+            this._MFPSwait--;
             waiting = !SceneManager.meetFPSCondition();
-            if (!waiting) {
+            if (!waiting || this._MFPSwait <= 0) {
                 this._waitMode = '';
+                this._MFPSwait = maxWaitTime;
             }
         }
         else waiting = _Game_Interpreter_updateWaitMode.apply(this, arguments);
