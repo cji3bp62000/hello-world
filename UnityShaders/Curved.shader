@@ -31,7 +31,9 @@
 		void vert(inout appdata_full v, out Input o)
 		{
 			UNITY_INITIALIZE_OUTPUT(Input, o);
-			float3 viewPosition = ObjSpaceViewDir(v.vertex); // get world space position of vertex
+			//float3 viewPosition = WorldSpaceViewDir(v.vertex);  // get world space position of vertex -> camera
+			//float3 viewPosition = ObjSpaceViewDir(v.vertex);    // get object space position of vertex -> camera
+			float3 viewPosition = UnityObjectToViewPos(v.vertex); // get screen space position of vertex
 			half distance = viewPosition.z; // distance squared from vertex to the camera, this power gives the curvature
 			distance = distance * distance;
 
