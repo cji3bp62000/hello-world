@@ -1309,7 +1309,7 @@ function Filter_Controller() {
                 case 31:
                 if(!!this._spriteset) {
                     if(!!this._spriteset._tilemap) {
-                        targets = [this._spriteset._tilemap.lowerZLayer, this._spriteset._tilemap.upperZLayer, this._parallax];
+                        targets = [this._spriteset._tilemap.lowerZLayer, this._spriteset._tilemap.upperZLayer, this._spriteset._parallax];
                     }
                 }
                 
