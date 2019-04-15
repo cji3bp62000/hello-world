@@ -4,6 +4,7 @@
 // Copyright (c) 2018 Tsukimi
 // ----------------------------------------------------------------------------
 // Version
+// 2.0.9 2019/04/15 add filter enable/disable
 // 2.0.8 2018/02/26 add Displacement Filter
 // 2.0.7 2018/02/10 fix character id wrong bug again, add two new filters
 // 2.0.6 2018/02/02 fix character wrong bug, make special condition(filterArea) for bulge pinch
@@ -34,6 +35,28 @@
  * put under img/pictures/ folder
  * @default DisplacementMap
  * 
+ * @param enabledAll-Settings
+ * @text FilterEffectsEnabled(All) ON/OFF Settings
+ * 
+ * @param enabledAll-ShowInOptionMenu
+ * @text Show in Option Menu
+ * @parent enabledAll-Settings
+ * @desc Show FilterEffectsEnabled(All) in Option Menu
+ * @type boolean
+ * @default true
+ * 
+ * @param enabledAll-Text
+ * @text Option Menu Text
+ * @parent enabledAll-Settings
+ * @desc text of FilterEnabled(All) option in option menu
+ * @default Filter Effects
+ * 
+ * @param enabledAll-DefaultValue
+ * @text default ON/OFF state
+ * @parent enabledAll-Settings
+ * @desc default value of FilterEnabled(All), false -> don't apply any filter effects
+ * @type boolean
+ * @default true
  * 
  * @help
  * *** pixi-filter Controller
@@ -118,6 +141,13 @@
  * 　　　setFilter tw#1 v1 v2 r50~v3 x
  * 
  * 
+ *   enableFilter <id> <true/false>
+ * 　　enable or disable the filter.
+ * 　　could be use as pausing filter effect.
+ * 　　example:
+ * 　　　setFilter tw#1 v1 v2 r50~v3 x
+ * 
+ * 
  *   moveFilter <id> <filter parameters ...> <duration>
  *    move filter<id> to <parameters> within <duration>
  * 
@@ -195,6 +225,29 @@
  * 画像を img/pictures/ に入れてください。
  * @default DisplacementMap
  * 
+ * @param enabledAll-Settings
+ * @text フィルター効果ON/OFF設定
+ * 
+ * @param enabledAll-ShowInOptionMenu
+ * @text オプションメニューに表示する
+ * @parent enabledAll-Settings
+ * @desc 「フィルター効果」のON/OFFをゲーム内のオプションメニューから設定出来るようにする
+ * @type boolean
+ * @default true
+ * 
+ * @param enabledAll-Text
+ * @text オプションメニューでの文言
+ * @parent enabledAll-Settings
+ * @desc ゲーム内オプションでのフィルター効果ON/OFFの文言
+ * @default フィルター効果
+ * 
+ * @param enabledAll-DefaultValue
+ * @text フィルター効果ON/OFFの初期値
+ * @parent enabledAll-Settings
+ * @desc フィルター効果ON/OFFの初期値；OFF→全フィルターを適用しない
+ * @type boolean
+ * @default true
+ * 
  * @help
  * 
  * 画面エフェクトの詰め合わせ
@@ -244,6 +297,13 @@
  *    画面エフェクトを消す。
  * 
  *    例: eraseFilter 発光
+ * 
+ * 
+ *   enableFilter [id] [true/false]
+ *    フィルタのアクティブ状態を切り替える。
+ * 　　フィルタ効果の一時中断にも使える。
+ * 
+ *    例: enableFilter 1 true
  * 
  * 
  *   setFilter [id] [該当エフェクトのパラメータ ...]
@@ -438,6 +498,11 @@ function Filter_Controller() {
                 $gameMap.setFilter( id , ParamProcess(args.slice(1)) );
                 break;
                 
+            case 'ENABLEFILTER' :
+                id = args[0];
+                $gameMap.enableFilter( id , getBoolean(args[1]) );
+                break;
+                
             case 'MOVEFILTER' :
                 id = args[0];
                 dur = Number(args[args.length-1]) || 1 ;
@@ -487,6 +552,10 @@ function Filter_Controller() {
         return undefined;
     };
     
+    function getBoolean(string) {
+        return (string || '').toUpperCase() === 'TRUE';
+    };
+    
     // resultArray:parameters
     // undefined parts are unused parts
     function ParamProcess(array) {
@@ -502,6 +571,8 @@ function Filter_Controller() {
     //
     // The Controller class for a filter.
     //=============================================================================
+    
+    Filter_Controller.enabledAll = getParamBoolean("enabledAll-DefaultValue");
     
     Filter_Controller.prototype.initialize = function(filterName, id, targetObj, char, mapId) {
         this.initBasic(id, targetObj, char, mapId);
@@ -522,6 +593,8 @@ function Filter_Controller() {
         this._charMapId = mapId;
         this.currentParams = null;
         this.targetParams = null;
+        
+        this.enabled = true;
     };
 
     Filter_Controller.prototype.initTarget = function() {
@@ -894,6 +967,8 @@ function Filter_Controller() {
     //=============================================================================
 
     Filter_Controller.prototype.updateFilter = function(filter) {
+        filter.enabled = Filter_Controller.enabledAll && this.enabled;
+        
         var handler = Filter_Controller.updateFilterHandler[this._filterType];
         if( !handler ) return;
         handler.apply(this, [filter, this.currentParams]);
@@ -906,6 +981,10 @@ function Filter_Controller() {
             cp[i] = typeof(target[i]) === "number" ? target[i]:cp[i];
         }
         this.initTarget();
+    };
+    
+    Filter_Controller.prototype.enable = function(enabled) {
+        this.enabled = enabled;
     };
 
     Filter_Controller.prototype.move = function(target, duration) {
@@ -1006,6 +1085,15 @@ function Filter_Controller() {
         var filterController = this._filterConArr.get(id);
         if(filterController) {
             filterController.set(target || []);
+            return true;
+        }
+        return false;
+    };
+
+    Game_Map.prototype.enableFilter = function(id, enabled) {
+        var filterController = this._filterConArr.get(id);
+        if(filterController) {
+            filterController.enable(enabled);
             return true;
         }
         return false;
@@ -1390,6 +1478,50 @@ function Filter_Controller() {
         }, this);
     };
     
+    
+    //=============================================================================
+    // Window_Options
+    //  拡張するプロパティを定義します。
+    //=============================================================================
+
+    var _Window_Options_makeCommandList = Window_Options.prototype.makeCommandList;
+    Window_Options.prototype.makeCommandList = function() {
+        _Window_Options_makeCommandList.apply(this, arguments);
+        this.addTKMFilterOptions();
+    };
+    
+    Window_Options.prototype.addTKMFilterOptions = function() {
+        if(getParamBoolean("enabledAll-ShowInOptionMenu"))
+            this.addCommand(getParamString("enabledAll-Text"), 'TKMFilterEnabledAll');
+    };
+    
+    Object.defineProperty(ConfigManager, 'TKMFilterEnabledAll', {
+        get: function() {
+            return !!Filter_Controller.enabledAll;
+        },
+        set: function(value) {
+            Filter_Controller.enabledAll = !!value;
+        },
+        configurable: true
+    });
+    
+    var _ConfigManager_makeData = ConfigManager.makeData;
+    ConfigManager.makeData = function() {
+        var config = _ConfigManager_makeData.apply(this, arguments);
+        config.TKMFilterEnabledAll = this.TKMFilterEnabledAll;
+        return config;
+    };
+
+    var _ConfigManager_applyData = ConfigManager.applyData; 
+    ConfigManager.applyData = function(config) {
+        _ConfigManager_applyData.apply(this, arguments);
+        if (config['TKMFilterEnabledAll'] === undefined) { // 初回読み込み？
+            this.TKMFilterEnabledAll = Filter_Controller.enabledAll;
+        } 
+        else
+            this.TKMFilterEnabledAll = this.readFlag(config, 'TKMFilterEnabledAll');
+    };
+
 })();
 
 /*!
