@@ -25,6 +25,29 @@
  * @desc should emitter set to player(-1) remain exist after map transition
  * @default true
  * 
+ * @param enabledAll-Settings
+ * @text ParticlesEnabled(All) ON/OFF Settings
+ * 
+ * @param enabledAll-ShowInOptionMenu
+ * @text Show in Option Menu
+ * @parent enabledAll-Settings
+ * @desc Show ParticlesEnabled(All) in Option Menu
+ * @type boolean
+ * @default true
+ * 
+ * @param enabledAll-Text
+ * @text Option Menu Text
+ * @parent enabledAll-Settings
+ * @desc text of ParticlesEnabled(All) option in option menu
+ * @default Show Particles
+ * 
+ * @param enabledAll-DefaultValue
+ * @text default ON/OFF state
+ * @parent enabledAll-Settings
+ * @desc default value of ParticlesEnabled(All), false -> don't apply any particles
+ * @type boolean
+ * @default true
+ * 
  * @help
  * 
  * ParticleEmitter
@@ -218,6 +241,29 @@
  * @text プレイヤー固定化(staticToPlayer)
  * @type boolean
  * @desc プレイヤーに設定したエミッターはマップ移動後に消さないべきか否か
+ * @default true
+ * 
+ * @param enabledAll-Settings
+ * @text パーティクル表示ON/OFF設定
+ * 
+ * @param enabledAll-ShowInOptionMenu
+ * @text オプションメニューに表示する
+ * @parent enabledAll-Settings
+ * @desc 「パーティクル表示」のON/OFFをゲーム内のオプションメニューから設定出来るようにする
+ * @type boolean
+ * @default true
+ * 
+ * @param enabledAll-Text
+ * @text オプションメニューでの文言
+ * @parent enabledAll-Settings
+ * @desc ゲーム内オプションでのパーティクル表示ON/OFFの文言
+ * @default パーティクル表示
+ * 
+ * @param enabledAll-DefaultValue
+ * @text パーティクル表示ON/OFFの初期値
+ * @parent enabledAll-Settings
+ * @desc パーティクル表示ON/OFFの初期値；OFF→全パーティクルを表示しない（少し軽くなる）
+ * @type boolean
  * @default true
  * 
  * @help
@@ -496,6 +542,10 @@ DataManager.loadParticleConfig = function(src) {
                 $gameMap.resumePEmitter(args[0]);
                 break;
                 
+            case 'ENABLEPEMITTER' :
+                $gameMap.enablePEmitter( args[0] , getBoolean(args[1]) );
+                break;
+                
             case 'STOPPE' :
             case 'STOPPEMITTER' :
                 $gameMap.stopPEmitter(args[0]);
@@ -588,6 +638,10 @@ DataManager.loadParticleConfig = function(src) {
         return undefined;
     };
     
+    function getBoolean(string) {
+        return (string || '').toUpperCase() === 'TRUE';
+    };
+    
     //==================
     // Object_PEmitter
     //==================
@@ -623,10 +677,15 @@ DataManager.loadParticleConfig = function(src) {
     };
 
     Object_PEmitter.prototype.update = function() {
+        this.updateEnableState();
         this.updateParameter();
         this.updateEmit();
         this.updatePos();
         this.updateTime();
+    };
+
+    Object_PEmitter.prototype.updateEnableState = function() {
+        this._emitterContainer.renderable = Game_PEmitter.enabledAll && this._gameObject.enabled;
     };
 
     Object_PEmitter.prototype.updateParameter = function() {
@@ -682,6 +741,8 @@ DataManager.loadParticleConfig = function(src) {
     //==================
     // Game_PEmitter
     //==================
+    
+    Game_PEmitter.enabledAll = getParamBoolean("enabledAll-DefaultValue");
 
     Game_PEmitter.prototype.initialize = function(id, imageNames, config, eventId) {
         this._pause = false;
@@ -706,6 +767,8 @@ DataManager.loadParticleConfig = function(src) {
         this._moveRoute = null;
         this._moveRouteQ = [];
         this._moveRouteQR = [];
+        
+        this.enabled = true;
     };
 
     Game_PEmitter.prototype.pause = function() {
@@ -718,6 +781,10 @@ DataManager.loadParticleConfig = function(src) {
 
     Game_PEmitter.prototype.stop = function() {
         this._stop = true;
+    };
+    
+    Game_PEmitter.prototype.enable = function(enabled) {
+        this.enabled = enabled;
     };
 
     Game_PEmitter.prototype.delete = function() {
@@ -865,6 +932,12 @@ DataManager.loadParticleConfig = function(src) {
         var e = this._PEmitterArr[id];
         if(!e) return;
         e.resume();
+    };
+
+    Game_Map.prototype.enablePEmitter = function(id, enabled) {
+        var e = this._PEmitterArr[id];
+        if(!e) return;
+        e.enable(enabled);
     };
 
     Game_Map.prototype.stopPEmitter = function(id) {
@@ -1140,6 +1213,50 @@ DataManager.loadParticleConfig = function(src) {
             }
         };
     }
+    
+    
+    //=============================================================================
+    // Window_Options
+    //  拡張するプロパティを定義します。
+    //=============================================================================
+    
+    var _Window_Options_makeCommandList = Window_Options.prototype.makeCommandList;
+    Window_Options.prototype.makeCommandList = function() {
+        _Window_Options_makeCommandList.apply(this, arguments);
+        this.addPEmitterOptions();
+    };
+    
+    Window_Options.prototype.addPEmitterOptions = function() {
+        if(getParamBoolean("enabledAll-ShowInOptionMenu"))
+            this.addCommand(getParamString("enabledAll-Text"), 'PEmitterEnabledAll');
+    };
+    
+    Object.defineProperty(ConfigManager, 'PEmitterEnabledAll', {
+        get: function() {
+            return !!Game_PEmitter.enabledAll;
+        },
+        set: function(value) {
+            Game_PEmitter.enabledAll = !!value;
+        },
+        configurable: true
+    });
+    
+    var _ConfigManager_makeData = ConfigManager.makeData;
+    ConfigManager.makeData = function() {
+        var config = _ConfigManager_makeData.apply(this, arguments);
+        config.PEmitterEnabledAll = this.PEmitterEnabledAll;
+        return config;
+    };
+
+    var _ConfigManager_applyData = ConfigManager.applyData; 
+    ConfigManager.applyData = function(config) {
+        _ConfigManager_applyData.apply(this, arguments);
+        if (config['PEmitterEnabledAll'] === undefined) { // 初回読み込み？
+            this.PEmitterEnabledAll = Game_PEmitter.enabledAll;
+        } 
+        else
+            this.PEmitterEnabledAll = this.readFlag(config, 'PEmitterEnabledAll');
+    };
     
 })();
 
