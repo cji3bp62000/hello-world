@@ -85,8 +85,9 @@
  * tachie_ChangePart [キャラ名] [レイヤー名] [パーツ番号]
  * tachie_CP [キャラ名] [レイヤー名] [パーツ番号]
  *     キャラのパーツの番号を設定します。デフォルトでは全部0です。
- *     例：tachie_ChangePart sizuru body 1
- *     　　tachie_CP sizuru body 1
+ * 　　番号は数字で直接指定以外、v1,v2,v3などで変数指定も出来ます。
+ *     例：tachie_ChangePart sizuru body 1　　（1をbodyに代入する）
+ *     　　tachie_CP sizuru body v15　（変数15の値をbodyに代入する）
  * 
  * ※CPはChangePartの短縮表示で、効果が同じです
  * 
@@ -176,11 +177,6 @@ $TKMvar.tachie = $TKMvar.tachie || {};
 
 $TKMvar.tachie.CharList; // is {} ; "キャラ名": [ 各レイヤーの番号[] ]
 $TKMvar.tachie.PicData = [];  // 各立ち絵のピクチャの番号、xy座標、現キャラなど
-
-	//customize
-    //$TKMvar.tachie.PicData[0] = {}; // 左に表示するピクチャ；立ち絵1
-    //$TKMvar.tachie.PicData[1] = {}; // 右に表示するピクチャ；立ち絵2
-    //$TKMvar.tachie.PicData[2] = {}; // 増やしたいなら、行の前の　"//" を消してください；四番目以降も似たような変更で追加できる（PicData[3]を追加）
 
 $TKMvar.tachie.partsNameArr = [];  // 各レイヤーのパーツ名
 
@@ -279,7 +275,7 @@ ImageManager.loadPictureInFolder = function(folder, filename, hue) {
                 var layerNum = $TKMvar.tachie.partsNameArr.findIndex(name => name === args[1]);
                 if(layerNum === -1) break; // そんなレイヤー名がなかったら無視する
                 
-                var partNum = parseInt(args[2], 10) || 0;
+                var partNum = getNumberOrVariableFromString(args[2]) || 0;
                 if(CharList[args[0]][args[1]] === partNum) break; // パーツが同じなら変更する必要ない
                 CharList[args[0]][args[1]] = partNum;
                 
