@@ -1400,6 +1400,7 @@ function Filter_Controller() {
                         targets = [this._spriteset._tilemap.lowerZLayer, this._spriteset._tilemap.upperZLayer, this._spriteset._parallax];
                     }
                 }
+                break;
                 
             case 4:
                 if(!!this._spriteset) {
