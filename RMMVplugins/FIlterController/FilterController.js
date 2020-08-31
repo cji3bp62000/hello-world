@@ -96,7 +96,7 @@
  * 　　　0: screen(map+pictures)
  * 　　　1: whole-screen(including message window)
  *      2: map(tiles+characters), 21(← +parallax)
- *      3: tiles, 31(tiles+parallax)
+ *      3: tiles, 31(tiles+parallax), 32(only parallax)
  *      4: all characers
  *      4000+id: character#id (id-> -1:game Player, 
  *                             0:this event, 1~: event#id)
@@ -273,7 +273,7 @@
  *    - 効果ターゲット: 0: 画面
  *                   1: 全画面(メッセージウィンドウ含む)
  *                   2: マップ（全キャラ+地形タイル）、21:（前記+parallax）
- *                   3: 地形タイル、31: タイル+parallax
+ *                   3: 地形タイル、31: タイル+parallax、32: parallaxのみ
  *                   4: 全キャラ
  *                   4000+x: 特定キャラ(x-> -1: 自キャラ, 
  *                           0: このイベント, 1以上: 該当イベント)
@@ -1432,6 +1432,14 @@ function Filter_Controller() {
                 if(!!this._spriteset) {
                     if(!!this._spriteset._tilemap) {
                         targets = [this._spriteset._tilemap.lowerZLayer, this._spriteset._tilemap.upperZLayer, this._spriteset._parallax];
+                    }
+                }
+                break;
+
+                case 32:
+                if(!!this._spriteset) {
+                    if(!!this._spriteset._tilemap) {
+                        targets = [this._spriteset._parallax];
                     }
                 }
                 break;
