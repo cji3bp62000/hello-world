@@ -520,6 +520,10 @@ function Filter_Controller() {
                 $gameMap.eraseFilter(id);
                 break;
                 
+            case 'ERASEALLFILTER' :
+                $gameMap.eraseAllFilter();
+                break;
+                
             case 'ERASEFILTERAFTERMOVE' :
                 id = args[0];
                 $gameMap.eraseFilterAfterMove(id);
@@ -1159,6 +1163,13 @@ function Filter_Controller() {
             return true;
         }
         return false;
+    };
+
+    Game_Map.prototype.eraseAllFilter = function() {
+		for (var i = 0; i < this._filterConArr.length; i++) {
+			this._filterConArr[i].erase();
+		}
+		return true;
     };
 
     Game_Map.prototype.eraseFilterAfterMove = function(id) {
