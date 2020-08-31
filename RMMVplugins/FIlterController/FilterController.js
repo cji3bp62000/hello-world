@@ -687,6 +687,9 @@ function Filter_Controller() {
     _defaultParam["motionblur"]     = [0,0];
     _defaultParam["glow"]           = [0,4,255,255,255];
     _defaultParam["displacement"]   = [1,1,20];
+	_defaultParam["bevel"]          = [0,3,0.7,0.7];
+	_defaultParam["tiltshift"]      = [0,312,816,312,30,450];
+	_defaultParam["glitch"]         = [10,100,0,0,0];
     
     Filter_Controller.defaultFilterParam = _defaultParam;
     
@@ -726,6 +729,11 @@ function Filter_Controller() {
             case "reflection-w":
                 this._addiTime = 0.1;
                 break;
+
+			case "tiltshift":
+				this.wResizeScale = Graphics.width / 1024;
+				this.hResizeScale = Graphics.height / 1024;
+				break;
                                    }
     };
 
@@ -959,6 +967,32 @@ function Filter_Controller() {
         filter.maskSprite.texture.baseTexture.wrapMode = PIXI.WRAP_MODES.REPEAT;
     };
     _updateFilterHandler["displacement"] = disp;
+	
+	_updateFilterHandler["bevel"] = function(filter, cp) {
+		filter.rotation = cp[0];
+		filter.thickness = cp[1];
+		filter.lightAlpha = cp[2];
+		filter.shadowAlpha = cp[3];
+	};
+	
+	_updateFilterHandler["tiltshift"] = function(filter, cp) {
+		filter.start = new Point(cp[0] * this.wResizeScale, cp[1] * this.hResizeScale);
+		filter.end = new Point(cp[2] * this.wResizeScale, cp[3] * this.hResizeScale);
+		filter.blur = cp[4];
+		filter.gradientBlur = cp[5];
+	};
+	
+	_updateFilterHandler["glitch"] = function(filter, cp) {
+		filter.slices = Math.round(cp[0]);
+		filter.offset = cp[1];
+		filter.direction = cp[2];
+		let r = cp[3], sita = cp[4];
+		filter.red = [r*Math.sin(Math.PI/180*sita), r*Math.cos(Math.PI/180*sita)];
+		sita += 120;
+		filter.green = [r*Math.sin(Math.PI/180*sita), r*Math.cos(Math.PI/180*sita)];
+		sita += 120;
+		filter.blue = [r*Math.sin(Math.PI/180*sita), r*Math.cos(Math.PI/180*sita)];
+	};
     
     Filter_Controller.updateFilterHandler = _updateFilterHandler;
     //=============================================================================
@@ -1485,26 +1519,20 @@ function Filter_Controller() {
     //  拡張するプロパティを定義します。
     //=============================================================================
 
-    var _Window_Options_makeCommandList = Window_Options.prototype.makeCommandList;
-    Window_Options.prototype.makeCommandList = function() {
-        _Window_Options_makeCommandList.apply(this, arguments);
-        this.addTKMFilterOptions();
-    };
-    
-    Window_Options.prototype.addTKMFilterOptions = function() {
-        if(getParamBoolean("enabledAll-ShowInOptionMenu"))
-            this.addCommand(getParamString("enabledAll-Text"), 'TKMFilterEnabledAll');
-    };
-    
-    Object.defineProperty(ConfigManager, 'TKMFilterEnabledAll', {
-        get: function() {
-            return !!Filter_Controller.enabledAll;
-        },
-        set: function(value) {
-            Filter_Controller.enabledAll = !!value;
-        },
-        configurable: true
-    });
+	var _showInOptionMenu = getParamBoolean("enabledAll-ShowInOptionMenu");
+	var _optionMenuText = getParamString("enabledAll-Text");
+
+	if (_showInOptionMenu) {
+		var _Window_Options_makeCommandList = Window_Options.prototype.makeCommandList;
+		Window_Options.prototype.makeCommandList = function() {
+			_Window_Options_makeCommandList.apply(this, arguments);
+			this.addTKMFilterOptions();
+		};
+	
+		Window_Options.prototype.addTKMFilterOptions = function() {
+			this.addCommand(_optionMenuText, 'TKMFilterEnabledAll');
+		};
+	}
     
     var _ConfigManager_makeData = ConfigManager.makeData;
     ConfigManager.makeData = function() {
@@ -1574,5 +1602,8 @@ _FNMap["reflection-w"]   = PIXI.filters.ReflectionFilter;
 _FNMap["motionblur"]     = PIXI.filters.MotionBlurFilter;
 _FNMap["glow"]           = PIXI.filters.GlowFilter;
 _FNMap["displacement"]   = PIXI.filters.DisplacementFilter;
+_FNMap["bevel"]          = PIXI.filters.BevelFilter;
+_FNMap["tiltshift"]      = PIXI.filters.TiltShiftFilter;
+_FNMap["glitch"]         = PIXI.filters.GlitchFilter;
     
 Filter_Controller.filterNameMap = _FNMap;
