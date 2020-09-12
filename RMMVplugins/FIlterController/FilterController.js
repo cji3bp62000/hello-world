@@ -1166,9 +1166,9 @@ function Filter_Controller() {
     };
 
     Game_Map.prototype.eraseAllFilter = function() {
-		for (var i = 0; i < this._filterConArr.length; i++) {
-			this._filterConArr[i].erase();
-		}
+		this._filterConArr.forEach(fc => {
+			fc.erase();
+		});
 		return true;
     };
 
