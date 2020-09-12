@@ -733,11 +733,6 @@ function Filter_Controller() {
             case "reflection-w":
                 this._addiTime = 0.1;
                 break;
-
-			case "tiltshift":
-				this.wResizeScale = Graphics.width / 1024;
-				this.hResizeScale = Graphics.height / 1024;
-				break;
                                    }
     };
 
@@ -980,8 +975,10 @@ function Filter_Controller() {
 	};
 	
 	_updateFilterHandler["tiltshift"] = function(filter, cp) {
-		filter.start = new Point(cp[0] * this.wResizeScale, cp[1] * this.hResizeScale);
-		filter.end = new Point(cp[2] * this.wResizeScale, cp[3] * this.hResizeScale);
+		var wResizeScale = Graphics.width / 1024;
+		var hResizeScale = Graphics.height / 1024;
+		filter.start = new Point(cp[0] * wResizeScale, cp[1] * hResizeScale);
+		filter.end = new Point(cp[2] * wResizeScale, cp[3] * hResizeScale);
 		filter.blur = cp[4];
 		filter.gradientBlur = cp[5];
 	};
